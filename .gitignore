@@ -1,0 +1,10 @@
+*.bin
+*.flat
+*.json
+*.lock
+*.properties
+*.ser
+*.txt
+*.xml
+.idea/*
+/venv
