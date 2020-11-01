@@ -1,3 +1,2 @@
-Server B is up and listening
-Message from Client: {'request_type': 'REGISTER', 'rq_number': 1, 'name': 'Khendek', 'ip': '127.0.0.1', 'socket': '22'}
-Message from Client: {'request_type': 'REGISTER', 'rq_number': 1, 'name': 'Khendek', 'ip': '127.0.0.1', 'socket': '22'}
+Server B: Beginning of Execution
+Starting Registration for client Khendek
