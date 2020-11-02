@@ -107,7 +107,8 @@ def user_registration(reg_message, client_address):
     else:
         # Add registered user to the list
         registered_message = "REGISTERED: " + str(reg_message["rq_number"])
-        reg_user = {"name": reg_message["name"], "ip": reg_message["ip"], "socket": reg_message["socket"]}
+        reg_user = {"name": reg_message["name"], "ip": reg_message["ip"],
+                    "socket": reg_message["socket"], "address": client_address}
         client_list.append(reg_user)
 
         # Send response to the Client
@@ -154,6 +155,19 @@ def user_de_registration(de_reg_message):
         print(new_reg_memory)
 
 
+def change_server():
+    # Change server message
+    change_message = "CHANGE-SERVER," + server_b_address + "," + str(server_b_port)
+    change_message_bytes = str.encode(change_message)
+
+    # Send the message to each registered user
+    for registered_user in client_list:
+        user_address_port = registered_user["address"]
+        UDPClientSocket.sendto(change_message_bytes, user_address_port)
+
+    add_to_server_log("Server A: " + change_message)
+
+
 def add_to_server_log(log):
     file = open("ServerALog.txt", "a")
     file.write("\n" + log)
@@ -180,7 +194,8 @@ if __name__ == "__main__":
                 print("Joining thread with id: " + str(element.ident))
                 element.join()
 
-            # TODO: 1) send messages to all connected clients that the server is changing + log
+            # Send messages to all connected clients that the server is changing
+            change_server()
 
             # Update Server B and Tell it to start serving
             new_memory = str.encode(json.dumps(client_list) + "," + serverIP + "," + str(serverPort))

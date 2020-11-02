@@ -2,6 +2,4 @@ Server A: Beginning of Execution
 Client to Server A: REGISTER 1 Khendek 127.0.0.1 22
 Server A: Starting Registration for client Khendek
 Server A: Khendek, REGISTERED: 1
-Client to Server A: DE-REGISTER 1 Khendek
-Server A: Starting De-Registration for client Khendek
-Server A: Khendek, DE-REGISTERED
+Server A: CHANGE-SERVER,127.0.0.1,1001

@@ -1,5 +1,6 @@
 import socket
 import json
+import threading
 
 # Server Addresses
 serverAAddressPort = ("127.0.0.1", 1000)
@@ -17,8 +18,21 @@ subjects_of_interest = []
 UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 
 
-def de_register_user():
-    print()
+def listen_for_messages():
+    global currentServerAddressPort
+
+    # Wait for messages
+    server_message = UDPClientSocket.recvfrom(bufferSize)
+    print(server_message[0])
+
+    if "CHANGE-SERVER" in str(server_message[0]):
+        server_info = str(server_message).split(',')
+        if server_info[0] == serverAAddressPort[0] and server_info[1] == serverAAddressPort[1]:
+            currentServerAddressPort = serverAAddressPort
+            print("Setting current server to server A")
+        else:
+            currentServerAddressPort = serverBAddressPort
+            print("Setting current server to server B")
 
 
 if __name__ == "__main__":
@@ -35,9 +49,10 @@ if __name__ == "__main__":
     registration_msg = "Message from Server {}".format(msgFromServer[0])
     print(registration_msg)
 
-    # TODO: 1) start thread for listening for messages from server (publishes/responses)
-    # TODO: 2) change currentServerAddressPort when server gets updated
-    # TODO: 3) change how rq numbers are generated
+    t_message = threading.Thread(target=listen_for_messages, args=())
+    t_message.start()
+
+    # TODO: 1) change how rq numbers are generated
 
     if "REGISTERED" in registration_msg:
         print("Client successfully registered")

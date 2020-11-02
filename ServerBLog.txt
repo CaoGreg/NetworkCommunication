@@ -1,5 +1,5 @@
 Server B: Beginning of Execution
 Server A to Server B: REGISTERED 1 Khendek 127.0.0.1 22
-Server A to Server B: [{"name": "Khendek", "ip": "127.0.0.1", "socket": "22"}]
-Server A to Server B: DE-REGISTER Khendek
-Server A to Server B: []
+Server A to Server B: [{"name": "Khendek", "ip": "127.0.0.1", "socket": "22", "address": ["127.0.0.1", 63473]}]
+Server A to Server B: [{"name": "Khendek", "ip": "127.0.0.1", "socket": "22", "address": ["127.0.0.1", 63473]}]
+Server B Resuming Service
