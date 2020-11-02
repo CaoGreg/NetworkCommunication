@@ -1,2 +1,7 @@
 Server B: Beginning of Execution
-Starting Registration for client Khendek
+Server B Resuming Service
+Server B Resuming Service
+Server B Resuming Service
+Server B Resuming Service
+Server B Resuming Service
+Server B Resuming Service

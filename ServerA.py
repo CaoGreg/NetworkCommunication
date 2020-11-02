@@ -13,7 +13,9 @@ thread_list = []
 client_list = []
 
 # Server B information
-server_b_address_port = ("127.0.0.1", 1001)
+server_b_address = "127.0.0.1"
+server_b_port = 1001
+server_b_address_port = (server_b_address, server_b_port)
 UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 
 # Create a datagram socket
@@ -28,15 +30,17 @@ f.close()
 
 # Listen for incoming messages
 def listen_for_messages(stop_event):
+    global isServerActive
     while True:
         # Wait for messages from clients
         bytes_address_pair = UDPServerSocket.recvfrom(bufferSize)
         message = (bytes_address_pair[0].decode())
         address = bytes_address_pair[1]
-        message_dict = json.loads(message)
 
         # Only answer if the server is serving
         if not stop_event.is_set():
+            message_dict = json.loads(message)
+
             # write message to log file
             client_msg = "Client to Server A: " + message_dict["request_type"] + " " + str(message_dict["rq_number"]) \
                          + " " + message_dict["name"] + " " + message_dict["ip"] + " " + str(message_dict["socket"])
@@ -47,6 +51,17 @@ def listen_for_messages(stop_event):
                 thread_list.append(register_thread)
                 register_thread.start()
                 add_to_server_log("Server A: Starting Registration for client " + message_dict["name"])
+        else:
+            # Wait for messages from Server B
+            if server_b_address in message and str(server_b_port) in message:
+                print("Message from Server A: " + message)
+                if "SERVER UP" in message:
+                    add_to_server_log("Server A Resuming Service")
+                    print("Server A Resuming Service")
+                    isServerActive = 1
+                else:
+                    server_b_client_msg = "Server B to Server A: " + str(message).split(',')[0]
+                    add_to_server_log(server_b_client_msg)
 
 
 def user_registration(reg_message, client_address):
@@ -89,10 +104,10 @@ def user_registration(reg_message, client_address):
         status = "REGISTERED"
 
     # Send Result to Server B
-    server_msg = reg_message
-    server_msg["request_type"] = status
-    register_message_json = json.dumps(server_msg)
-    register_message_bytes = str.encode(register_message_json)
+    server_msg = status + " " + str(reg_message["rq_number"]) + " " + reg_message["name"] + " " + \
+                 reg_message["ip"] + " " + str(reg_message["socket"]) + "," + serverIP + "," + str(serverPort)
+
+    register_message_bytes = str.encode(server_msg)
     UDPClientSocket.sendto(register_message_bytes, server_b_address_port)
     print(reg_message)
 
@@ -104,14 +119,18 @@ def add_to_server_log(log):
 
 
 if __name__ == "__main__":
+    # Start the message thread
+    t_message_stop = threading.Event()
+    t_message = threading.Thread(target=listen_for_messages, args=(t_message_stop,))
+    t_message_stop.set()
+    t_message.start()
+
     while True:
         if isServerActive == 1:
-            t_message_stop = threading.Event()
-            t_message = threading.Thread(target=listen_for_messages, args=(t_message_stop,))
-            t_message.start()
-
+            t_message_stop.clear()
             # Serving time
-            time.sleep(100)
+            print("Server A Listening")
+            time.sleep(60)
             t_message_stop.set()
 
             # Join all the threads that were started during the serving time
@@ -120,22 +139,12 @@ if __name__ == "__main__":
                 element.join()
 
             # TODO: send messages to all connected clients that the server is changing + log
-            # TODO: tell server B that it can starting serving
-            isServerActive = 0
-        else:
-            # Wait for messages from Server B
-            print("Waiting for logs from Server B")
-            server_b_bytes_address_pair = UDPServerSocket.recvfrom(bufferSize)
-            server_b_message = (server_b_bytes_address_pair[0].decode())
-            server_b_message_dict = json.loads(server_b_message)
 
-            if server_b_message_dict["request_type"] == "SERVER":
-                # TODO: reactivate the server
-                isServerActive = 1
-            else:
-                # TODO: make this log properly
-                server_b_client_msg = "Client to Server B: {}".format(str(server_b_message_dict))
-                add_to_server_log("Starting Registration for client " + server_b_message_dict["name"])
+            # Tell Server B it can start serving
+            up_message_bytes = str.encode("SERVER UP," + serverIP + "," + str(serverPort))
+            UDPClientSocket.sendto(up_message_bytes, server_b_address_port)
+            print("Sent server up to B")
+            isServerActive = 0
 
     # Join the serving thread
     t_message.join()

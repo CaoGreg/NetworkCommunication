@@ -19,7 +19,7 @@ UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 
 # Send register request to both servers
 UDPClientSocket.sendto(registerMessageBytes, serverAAddressPort)
-#UDPClientSocket.sendto(registerMessageBytes, serverBAddressPort)
+UDPClientSocket.sendto(registerMessageBytes, serverBAddressPort)
 
 msgFromServer = UDPClientSocket.recvfrom(bufferSize)
 msg = "Message from Server {}".format(msgFromServer[0])

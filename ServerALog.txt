@@ -1,4 +1,7 @@
 Server A: Beginning of Execution
-Client to Server A: REGISTER 1 Khendek 127.0.0.1 22
-Server A: Starting Registration for client Khendek
-Server A: Khendek, REGISTERED: 1
+Server B Resuming Service
+Server B Resuming Service
+Server B Resuming Service
+Server B Resuming Service
+Server B Resuming Service
+Server B Resuming Service
