@@ -75,10 +75,10 @@ def user_registration(reg_message, client_address):
     status = ""
 
     for registered_user in client_list:
-        if registered_user.name == reg_message["name"]:
+        if registered_user["name"] == reg_message["name"]:
             user_exists = True
             denial_reason = "Name already exists"
-        if registered_user.ip_address == reg_message["ip"] and registered_user.socket_num == reg_message["socket"]:
+        if registered_user["ip"] == reg_message["ip"] and registered_user["socket"] == reg_message["socket"]:
             user_exists = True
             denial_reason = "IP and socket already registered"
 
@@ -138,7 +138,7 @@ if __name__ == "__main__":
             t_message_stop.clear()
             # Serving time
             print("Server A Listening")
-            time.sleep(60)
+            time.sleep(5)
             t_message_stop.set()
 
             # Join all the threads that were started during the serving time
@@ -147,7 +147,6 @@ if __name__ == "__main__":
                 element.join()
 
             # TODO: send messages to all connected clients that the server is changing + log
-            # TODO: add timeout on server side in case the server gets shut down
 
             # Update Server B and Tell it to start serving
             new_memory = str.encode(json.dumps(client_list) + "," + serverIP + "," + str(serverPort))
@@ -157,6 +156,15 @@ if __name__ == "__main__":
             UDPClientSocket.sendto(up_message_bytes, server_b_address_port)
             print("Sent server up to B")
             isServerActive = 0
+        else:
+            # If Server B takes to long to respond, timeout and start serving again
+            timeout_count = 0
+            while isServerActive == 0:
+                if timeout_count >= 13:
+                    isServerActive = 1
+                else:
+                    time.sleep(5)
+                    timeout_count += 1
 
     # Join the serving thread
     t_message.join()
