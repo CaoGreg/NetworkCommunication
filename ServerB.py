@@ -2,7 +2,6 @@ import socket
 import threading
 import time
 import json
-import RegisteredUser
 
 # Server B information
 serverIP = "127.0.0.1"
@@ -31,6 +30,7 @@ f.close()
 # Listen for incoming messages
 def listen_for_messages(stop_event):
     global isServerActive
+    global client_list
     while True:
         # Wait for messages from clients
         bytes_address_pair = UDPServerSocket.recvfrom(bufferSize)
@@ -60,8 +60,12 @@ def listen_for_messages(stop_event):
                     print("Server B Resuming Service")
                     isServerActive = 1
                 else:
-                    server_a_client_msg = "Server A to Server B: " + str(message).split(',')[0]
+                    server_a_client_msg = "Server A to Server B: " + str(message).split(',' + serverIP)[0]
                     add_to_server_log(server_a_client_msg)
+
+                    # Check if it is a memory update
+                    if '[' in message:
+                        client_list = json.loads(str(message).split(',' + serverIP)[0])
 
 
 def user_registration(reg_message, client_address):
@@ -91,7 +95,7 @@ def user_registration(reg_message, client_address):
     else:
         # Add registered user to the list
         registered_message = "REGISTERED: " + str(reg_message["rq_number"])
-        reg_user = RegisteredUser.RegisteredUser(reg_message["name"], reg_message["ip"], reg_message["socket"])
+        reg_user = {"name": reg_message["name"], "ip": reg_message["ip"], "socket": reg_message["socket"]}
         client_list.append(reg_user)
 
         # Send response to the Client
@@ -103,13 +107,17 @@ def user_registration(reg_message, client_address):
         print(reg_message["name"] + ", " + registered_message)
         status = "REGISTERED"
 
-    # Send Result to Server B
+    # Send Result to Server A and update its memory
     server_msg = status + " " + str(reg_message["rq_number"]) + " " + reg_message["name"] + " " + \
                  reg_message["ip"] + " " + str(reg_message["socket"]) + "," + serverIP + "," + str(serverPort)
 
-    register_message_bytes = str.encode(server_msg)  # str.encode(register_message_json)
+    register_message_bytes = str.encode(server_msg)
     UDPClientSocket.sendto(register_message_bytes, server_a_address_port)
+
+    new_reg_memory = str.encode(json.dumps(client_list) + "," + serverIP + "," + str(serverPort))
+    UDPClientSocket.sendto(new_reg_memory, server_a_address_port)
     print(reg_message)
+    print(new_reg_memory)
 
 
 def add_to_server_log(log):
@@ -139,8 +147,12 @@ if __name__ == "__main__":
                 element.join()
 
             # TODO: send messages to all connected clients that the server is changing + log
+            # TODO: add timeout on server side in case the server gets shut down
 
-            # Tell Server B it can start serving
+            # Update Server A and Tell it to start serving
+            new_memory = str.encode(json.dumps(client_list) + "," + serverIP + "," + str(serverPort))
+            UDPClientSocket.sendto(new_memory, server_a_address_port)
+
             up_message_bytes = str.encode("SERVER UP," + serverIP + "," + str(serverPort))
             UDPClientSocket.sendto(up_message_bytes, server_a_address_port)
             print("Sent server up to A")
