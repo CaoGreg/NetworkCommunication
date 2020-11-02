@@ -41,16 +41,28 @@ def listen_for_messages(stop_event):
         if not stop_event.is_set():
             message_dict = json.loads(message)
 
-            # write message to log file
-            client_msg = "Client to Server A: " + message_dict["request_type"] + " " + str(message_dict["rq_number"]) \
-                         + " " + message_dict["name"] + " " + message_dict["ip"] + " " + str(message_dict["socket"])
-            add_to_server_log(client_msg)
-
             if message_dict["request_type"] == "REGISTER":
+                # write message to log file
+                client_msg = "Client to Server A: " + message_dict["request_type"] + " " + str(
+                    message_dict["rq_number"]) \
+                             + " " + message_dict["name"] + " " + message_dict["ip"] + " " + str(message_dict["socket"])
+                add_to_server_log(client_msg)
+
                 register_thread = threading.Thread(target=user_registration, args=(message_dict, address,))
                 thread_list.append(register_thread)
                 register_thread.start()
                 add_to_server_log("Server A: Starting Registration for client " + message_dict["name"])
+
+            if message_dict["request_type"] == "DE-REGISTER":
+                # write message to log file
+                client_msg = "Client to Server A: " + message_dict["request_type"] + " " + str(
+                    message_dict["rq_number"]) + " " + message_dict["name"]
+                add_to_server_log(client_msg)
+
+                de_register_thread = threading.Thread(target=user_de_registration, args=(message_dict,))
+                thread_list.append(de_register_thread)
+                de_register_thread.start()
+                add_to_server_log("Server A: Starting De-Registration for client " + message_dict["name"])
         else:
             # Wait for messages from Server B
             if server_b_address in message and str(server_b_port) in message:
@@ -120,6 +132,28 @@ def user_registration(reg_message, client_address):
     print(new_reg_memory)
 
 
+def user_de_registration(de_reg_message):
+    user_removed = False
+
+    for registered_user in client_list:
+        if registered_user["name"] == de_reg_message["name"]:
+            user_removed = True
+            client_list.remove(registered_user)
+            print("Removing " + str(registered_user))
+
+    if user_removed:
+        # Send Result to Server B and update its memory
+        server_msg = "DE-REGISTER" + " " + str(de_reg_message["name"]) + "," + serverIP + "," + str(serverPort)
+        register_message_bytes = str.encode(server_msg)
+        UDPClientSocket.sendto(register_message_bytes, server_b_address_port)
+
+        new_reg_memory = str.encode(json.dumps(client_list) + "," + serverIP + "," + str(serverPort))
+        UDPClientSocket.sendto(new_reg_memory, server_b_address_port)
+        add_to_server_log("Server A: " + de_reg_message["name"] + ", " + "DE-REGISTERED")
+        print(de_reg_message)
+        print(new_reg_memory)
+
+
 def add_to_server_log(log):
     file = open("ServerALog.txt", "a")
     file.write("\n" + log)
@@ -138,7 +172,7 @@ if __name__ == "__main__":
             t_message_stop.clear()
             # Serving time
             print("Server A Listening")
-            time.sleep(5)
+            time.sleep(60)
             t_message_stop.set()
 
             # Join all the threads that were started during the serving time
@@ -146,7 +180,7 @@ if __name__ == "__main__":
                 print("Joining thread with id: " + str(element.ident))
                 element.join()
 
-            # TODO: send messages to all connected clients that the server is changing + log
+            # TODO: 1) send messages to all connected clients that the server is changing + log
 
             # Update Server B and Tell it to start serving
             new_memory = str.encode(json.dumps(client_list) + "," + serverIP + "," + str(serverPort))
