@@ -10,6 +10,7 @@ bufferSize = 1024
 isServerActive = 0
 thread_list = []
 client_list = []
+subjects_list = ["AI", "Cloud", "Networking", "Micro controllers", "Micro processors"]
 
 # Server A information
 server_a_address = "127.0.0.1"
@@ -49,8 +50,8 @@ def listen_for_messages(stop_event):
 
                 register_thread = threading.Thread(target=user_registration, args=(message_dict,))
                 thread_list.append(register_thread)
-                register_thread.start()
                 add_to_server_log("Server B: Starting Registration for client " + message_dict["name"])
+                register_thread.start()
 
             if message_dict["request_type"] == "DE-REGISTER":
                 # write message to log file
@@ -60,8 +61,8 @@ def listen_for_messages(stop_event):
 
                 de_register_thread = threading.Thread(target=user_de_registration, args=(message_dict,))
                 thread_list.append(de_register_thread)
-                de_register_thread.start()
                 add_to_server_log("Server B: Starting De-Registration for client " + message_dict["name"])
+                de_register_thread.start()
 
             if message_dict["request_type"] == "UPDATE":
                 # write message to log file
@@ -72,8 +73,20 @@ def listen_for_messages(stop_event):
 
                 update_user_thread = threading.Thread(target=user_update, args=(message_dict,))
                 thread_list.append(update_user_thread)
-                update_user_thread.start()
                 add_to_server_log("Server B: Starting user update for client " + message_dict["name"])
+                update_user_thread.start()
+
+            if message_dict["request_type"] == "SUBJECTS":
+                # write message to log file
+                client_msg = "Client to Server B: " + message_dict["request_type"] + " " + str(
+                    message_dict["rq_number"]) + " " + message_dict["name"] + " " + str(message_dict["subjects"])
+                add_to_server_log(client_msg)
+
+                update_subjects_thread = threading.Thread(target=subjects_update,
+                                                          args=(message_dict, bytes_address_pair[1]))
+                thread_list.append(update_subjects_thread)
+                add_to_server_log("Server B: Starting subjects update for client " + message_dict["name"])
+                update_subjects_thread.start()
 
         else:
             # Wait for messages from Server A
@@ -88,7 +101,7 @@ def listen_for_messages(stop_event):
                     add_to_server_log(server_a_client_msg)
 
                     # Check if it is a memory update
-                    if '[' in message:
+                    if '[{' in message:
                         client_list = json.loads(str(message).split(',' + serverIP)[0])
 
 
@@ -120,7 +133,8 @@ def user_registration(reg_message):
     else:
         # Add registered user to the list
         registered_message = "REGISTERED: " + str(reg_message["rq_number"])
-        reg_user = {"name": reg_message["name"], "ip": reg_message["ip"], "socket": reg_message["socket"]}
+        reg_user = {"name": reg_message["name"], "ip": reg_message["ip"],
+                    "socket": reg_message["socket"], "subjects": []}
         client_list.append(reg_user)
 
         # Send response to the Client
@@ -217,6 +231,56 @@ def user_update(update_message):
         print(update_message["name"] + ", " + denial_message)
 
 
+def subjects_update(subjects_message, client_address):
+    user_exists = False
+    status = ""
+
+    for registered_user in client_list:
+        if registered_user["name"] == subjects_message["name"]:
+            user_exists = True
+            registered_user["subjects"] = subjects_message["subjects"]
+            print("Updating " + str(registered_user))
+    if user_exists:
+        status = "SUBJECTS-UPDATED"
+
+        # Send response to the Client
+        message = status + ": " + str(subjects_message["rq_number"]) + " " + subjects_message["name"] \
+                  + " " + str(subjects_message["subjects"])
+        update_message_bytes = str.encode(message)
+        UDPServerSocket.sendto(update_message_bytes, client_address)
+
+        # Send Result to Server A and update its memory
+        server_msg = status + " " + str(subjects_message["rq_number"]) + " " + str(
+            subjects_message["name"]) + " " + str(subjects_message["subjects"]) + "," + serverIP + "," + str(serverPort)
+        register_message_bytes = str.encode(server_msg)
+        UDPClientSocket.sendto(register_message_bytes, server_a_address_port)
+
+        new_reg_memory = str.encode(json.dumps(client_list) + "," + serverIP + "," + str(serverPort))
+        UDPClientSocket.sendto(new_reg_memory, server_a_address_port)
+        add_to_server_log("Server B: " + subjects_message["name"] + ", " + "SUBJECTS-UPDATED")
+
+        # log the message
+        add_to_server_log("Server B: " + subjects_message["name"] + ", updated: " +
+                          str(subjects_message["subjects"]) + " " + status)
+
+        print(subjects_message)
+        print(new_reg_memory)
+    else:
+        status = "SUBJECTS-REJECTED"
+
+        # Send response to the Client
+        message = status + ": " + str(subjects_message["rq_number"]) + " " + subjects_message["name"] \
+                  + " " + str(subjects_message["subjects"])
+        update_message_bytes = str.encode(message)
+        UDPServerSocket.sendto(update_message_bytes, client_address)
+
+        # log the message
+        add_to_server_log("Server B: " + subjects_message["name"] + ", updated: " +
+                          str(subjects_message["subjects"]) + " " + status)
+        print(subjects_message)
+        print(message)
+
+
 def change_server():
     # Change server message
     change_message = "CHANGE-SERVER," + server_a_address + "," + str(server_a_port)
@@ -242,7 +306,7 @@ if __name__ == "__main__":
     t_message = threading.Thread(target=listen_for_messages, args=(t_message_stop,))
     t_message_stop.set()
     t_message.start()
-
+    # TODO: make listening thread like in client?
     while True:
         if isServerActive == 1:
             t_message_stop.clear()
