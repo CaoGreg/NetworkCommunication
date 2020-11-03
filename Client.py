@@ -133,7 +133,7 @@ if __name__ == "__main__":
         elif user_action == '3':
             print("Starting subjects of interest update")
             # TODO: make this user input
-            subj = ["AI", "Machine learning", "Cloud"]
+            subj = ["AI", "Cloud"]
             # Create subjects message
             subjects_message = {"request_type": "SUBJECTS", "rq_number": 1, "name": client_name, "subjects": subj}
             subjects_message_json = json.dumps(subjects_message)

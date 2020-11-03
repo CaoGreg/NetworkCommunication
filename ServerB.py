@@ -233,14 +233,19 @@ def user_update(update_message):
 
 def subjects_update(subjects_message, client_address):
     user_exists = False
+    subject_exists = True
     status = ""
+
+    for subject in subjects_message["subjects"]:
+        if subject not in subjects_list:
+            subject_exists = False
 
     for registered_user in client_list:
         if registered_user["name"] == subjects_message["name"]:
             user_exists = True
             registered_user["subjects"] = subjects_message["subjects"]
             print("Updating " + str(registered_user))
-    if user_exists:
+    if user_exists and subject_exists:
         status = "SUBJECTS-UPDATED"
 
         # Send response to the Client
