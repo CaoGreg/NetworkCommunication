@@ -114,7 +114,7 @@ def listen_for_messages(stop_event):
                     server_b_address = message_dict["ip"]
                     server_b_port = message_dict["socket"]
                     server_b_address_port = (server_b_address, int(server_b_port))
-                    
+
             else:
                 # Wait for messages from Server B
                 if server_b_address in message and str(server_b_port) in message:
