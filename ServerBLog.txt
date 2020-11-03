@@ -1,1 +1,20 @@
 Server B: Beginning of Execution
+Server A to Server B: []
+Server B Resuming Service
+Client to Server B: REGISTER 1 Khendek 127.0.0.1 2000
+Server B: Starting Registration for client Khendek
+Server A: Khendek, REGISTERED: 1
+Server A: CHANGE-SERVER,127.0.0.1,1000
+Server A to Server B: [{"name": "Khendek", "ip": "127.0.0.1", "socket": "2000", "subjects": []}]
+Server B Resuming Service
+Client to Server B: SUBJECTS 1 Khendek ['AI', 'Cloud']
+Server B: Starting subjects update for client Khendek
+Server B: Khendek, SUBJECTS-UPDATED
+Server B: Khendek, updated: ['AI', 'Cloud'] SUBJECTS-UPDATED
+Server A: CHANGE-SERVER,127.0.0.1,1000
+Server A to Server B: [{"name": "Khendek", "ip": "127.0.0.1", "socket": "2000", "subjects": ["AI", "Cloud"]}]
+Server B Resuming Service
+Client to Server B: PUBLISH 1 Khendek AI home
+Server B: Starting publish for client Khendek
+Server B: Khendek MESSAGE: AI, home
+Server A: CHANGE-SERVER,127.0.0.1,1000

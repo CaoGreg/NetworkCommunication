@@ -2,6 +2,7 @@ import socket
 import threading
 import time
 import json
+import select
 
 # Server B information
 serverIP = "127.0.0.1"
@@ -11,6 +12,8 @@ isServerActive = 0
 thread_list = []
 client_list = []
 subjects_list = ["AI", "Cloud", "Networking", "Micro controllers", "Micro processors"]
+t_message_stop = threading.Event()
+global t_message
 
 # Server A information
 server_a_address = "127.0.0.1"
@@ -32,89 +35,101 @@ f.close()
 def listen_for_messages(stop_event):
     global isServerActive
     global client_list
-    while True:
+    global server_a_address
+    global server_a_port
+    global server_a_address_port
+
+    while not stop_event.is_set():
         # Wait for messages from clients
-        bytes_address_pair = UDPServerSocket.recvfrom(bufferSize)
-        message = (bytes_address_pair[0].decode())
+        read, write, errors = select.select([UDPServerSocket], [], [], 1)
+        for read_socket in read:
+            bytes_address_pair = UDPServerSocket.recvfrom(bufferSize)
+            message = (bytes_address_pair[0].decode())
+            print(message)
 
-        # Only answer if the server is serving
-        if not stop_event.is_set():
-            message_dict = json.loads(message)
+            # Only answer if the server is serving
+            if isServerActive == 1:
+                message_dict = json.loads(message)
 
-            if message_dict["request_type"] == "REGISTER":
-                # write message to log file
-                client_msg = "Client to Server B: " + message_dict["request_type"] + " " + str(
-                    message_dict["rq_number"]) \
-                             + " " + message_dict["name"] + " " + message_dict["ip"] + " " + str(message_dict["socket"])
-                add_to_server_log(client_msg)
+                if message_dict["request_type"] == "REGISTER":
+                    # write message to log file
+                    client_msg = "Client to Server B: " + message_dict["request_type"] + " " + str(
+                        message_dict["rq_number"]) \
+                                 + " " + message_dict["name"] + " " + message_dict["ip"] + " " + str(message_dict["socket"])
+                    add_to_server_log(client_msg)
 
-                register_thread = threading.Thread(target=user_registration, args=(message_dict,))
-                thread_list.append(register_thread)
-                add_to_server_log("Server B: Starting Registration for client " + message_dict["name"])
-                register_thread.start()
+                    register_thread = threading.Thread(target=user_registration, args=(message_dict,))
+                    thread_list.append(register_thread)
+                    add_to_server_log("Server B: Starting Registration for client " + message_dict["name"])
+                    register_thread.start()
 
-            if message_dict["request_type"] == "DE-REGISTER":
-                # write message to log file
-                client_msg = "Client to Server B: " + message_dict["request_type"] + " " + str(
-                    message_dict["rq_number"]) + " " + message_dict["name"]
-                add_to_server_log(client_msg)
+                if message_dict["request_type"] == "DE-REGISTER":
+                    # write message to log file
+                    client_msg = "Client to Server B: " + message_dict["request_type"] + " " + str(
+                        message_dict["rq_number"]) + " " + message_dict["name"]
+                    add_to_server_log(client_msg)
 
-                de_register_thread = threading.Thread(target=user_de_registration, args=(message_dict,))
-                thread_list.append(de_register_thread)
-                add_to_server_log("Server B: Starting De-Registration for client " + message_dict["name"])
-                de_register_thread.start()
+                    de_register_thread = threading.Thread(target=user_de_registration, args=(message_dict,))
+                    thread_list.append(de_register_thread)
+                    add_to_server_log("Server B: Starting De-Registration for client " + message_dict["name"])
+                    de_register_thread.start()
 
-            if message_dict["request_type"] == "UPDATE":
-                # write message to log file
-                client_msg = "Client to Server B: " + message_dict["request_type"] + " " + str(
-                    message_dict["rq_number"]) \
-                             + " " + message_dict["name"] + " " + message_dict["ip"] + " " + str(message_dict["socket"])
-                add_to_server_log(client_msg)
+                if message_dict["request_type"] == "UPDATE":
+                    # write message to log file
+                    client_msg = "Client to Server B: " + message_dict["request_type"] + " " + str(
+                        message_dict["rq_number"]) \
+                                 + " " + message_dict["name"] + " " + message_dict["ip"] + " " + str(message_dict["socket"])
+                    add_to_server_log(client_msg)
 
-                update_user_thread = threading.Thread(target=user_update, args=(message_dict,))
-                thread_list.append(update_user_thread)
-                add_to_server_log("Server B: Starting user update for client " + message_dict["name"])
-                update_user_thread.start()
+                    update_user_thread = threading.Thread(target=user_update, args=(message_dict,))
+                    thread_list.append(update_user_thread)
+                    add_to_server_log("Server B: Starting user update for client " + message_dict["name"])
+                    update_user_thread.start()
 
-            if message_dict["request_type"] == "SUBJECTS":
-                # write message to log file
-                client_msg = "Client to Server B: " + message_dict["request_type"] + " " + str(
-                    message_dict["rq_number"]) + " " + message_dict["name"] + " " + str(message_dict["subjects"])
-                add_to_server_log(client_msg)
+                if message_dict["request_type"] == "SUBJECTS":
+                    # write message to log file
+                    client_msg = "Client to Server B: " + message_dict["request_type"] + " " + str(
+                        message_dict["rq_number"]) + " " + message_dict["name"] + " " + str(message_dict["subjects"])
+                    add_to_server_log(client_msg)
 
-                update_subjects_thread = threading.Thread(target=subjects_update,
-                                                          args=(message_dict, bytes_address_pair[1]))
-                thread_list.append(update_subjects_thread)
-                add_to_server_log("Server B: Starting subjects update for client " + message_dict["name"])
-                update_subjects_thread.start()
+                    update_subjects_thread = threading.Thread(target=subjects_update,
+                                                              args=(message_dict, bytes_address_pair[1]))
+                    thread_list.append(update_subjects_thread)
+                    add_to_server_log("Server B: Starting subjects update for client " + message_dict["name"])
+                    update_subjects_thread.start()
 
-            if message_dict["request_type"] == "PUBLISH":
-                # write message to log file
-                client_msg = "Client to Server B: " + message_dict["request_type"] + " " + str(
-                    message_dict["rq_number"]) + " " + message_dict["name"] + " " + str(message_dict["subject"])\
-                             + " " + message_dict["text"]
-                add_to_server_log(client_msg)
+                if message_dict["request_type"] == "PUBLISH":
+                    # write message to log file
+                    client_msg = "Client to Server B: " + message_dict["request_type"] + " " + str(
+                        message_dict["rq_number"]) + " " + message_dict["name"] + " " + str(message_dict["subject"])\
+                                 + " " + message_dict["text"]
+                    add_to_server_log(client_msg)
 
-                user_publish_thread = threading.Thread(target=user_publish, args=(message_dict,bytes_address_pair[1]))
-                thread_list.append(user_publish_thread)
-                add_to_server_log("Server B: Starting publish for client " + message_dict["name"])
-                user_publish_thread.start()
+                    user_publish_thread = threading.Thread(target=user_publish, args=(message_dict,bytes_address_pair[1]))
+                    thread_list.append(user_publish_thread)
+                    add_to_server_log("Server B: Starting publish for client " + message_dict["name"])
+                    user_publish_thread.start()
 
-        else:
-            # Wait for messages from Server A
-            if server_a_address in message and str(server_a_port) in message:
-                print("Message from Server B: " + message)
-                if "SERVER UP" in message:
-                    add_to_server_log("Server B Resuming Service")
-                    print("Server B Resuming Service")
-                    isServerActive = 1
-                else:
-                    server_a_client_msg = "Server A to Server B: " + str(message).split(',' + serverIP)[0]
-                    add_to_server_log(server_a_client_msg)
+                if message_dict["request_type"] == "UPDATE-SERVER":
+                    server_a_address = message_dict["ip"]
+                    server_a_port = message_dict["socket"]
+                    server_a_address_port = (server_a_address, int(server_a_port))
 
-                    # Check if it is a memory update
-                    if '[{' in message:
-                        client_list = json.loads(str(message).split(',' + serverIP)[0])
+            else:
+                # Wait for messages from Server A
+                if server_a_address in message and str(server_a_port) in message:
+                    print("Message from Server A: " + message)
+                    if "SERVER UP" in message:
+                        add_to_server_log("Server B Resuming Service")
+                        print("Server B Resuming Service")
+                        isServerActive = 1
+                    else:
+                        server_a_client_msg = "Server A to Server B: " + str(message).split(',' + serverIP)[0]
+                        add_to_server_log(server_a_client_msg)
+
+                        # Check if it is a memory update
+                        if '[{' in message:
+                            client_list = json.loads(str(message).split(',' + serverIP)[0])
 
 
 def user_registration(reg_message):
@@ -357,6 +372,51 @@ def change_server():
     add_to_server_log("Server A: " + change_message)
 
 
+def update_server_ip():
+    global UDPServerSocket
+    global serverIP
+    global serverPort
+    global t_message
+    global t_message_stop
+
+    while True:
+        if isServerActive == 0:
+            print("Press 0 to modify server ip/socket")
+            cmd = input()
+            if isServerActive == 1:
+                break
+            if cmd == '0':
+                print("Please enter the new ip ")
+                new_ip = input()
+                if isServerActive == 1:
+                    break
+                print("Please enter the new socket")
+                new_socket = input()
+                if isServerActive == 1:
+                    break
+                # Update ip/socket info
+                serverIP = str(new_ip)
+                serverPort = int(new_socket)
+
+                # Stop the listening thread
+                t_message_stop.set()
+                t_message.join()
+                t_message_stop.clear()
+
+                # Starting new listening thread with new socket
+                UDPServerSocket.close()
+                UDPServerSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+                UDPServerSocket.bind((serverIP, serverPort))
+                t_message = threading.Thread(target=listen_for_messages, args=(t_message_stop,))
+                t_message.start()
+
+                # Create update message for server A
+                update_message = {"request_type": "UPDATE-SERVER", "ip": serverIP, "socket": str(serverPort)}
+                update_message_json = json.dumps(update_message)
+                update_message_bytes = str.encode(update_message_json)
+                UDPClientSocket.sendto(update_message_bytes, server_a_address_port)
+
+
 def add_to_server_log(log):
     file = open("ServerBLog.txt", "a")
     file.write("\n" + log)
@@ -365,23 +425,22 @@ def add_to_server_log(log):
 
 if __name__ == "__main__":
     # Start the message thread
-    t_message_stop = threading.Event()
     t_message = threading.Thread(target=listen_for_messages, args=(t_message_stop,))
-    t_message_stop.set()
+    t_input = threading.Thread(target=update_server_ip, args=())
     t_message.start()
-    # TODO: make listening thread like in client?
+    t_input.start()
+
     while True:
         if isServerActive == 1:
-            t_message_stop.clear()
             # Serving time
             print("Server B Listening")
             time.sleep(60)
-            t_message_stop.set()
 
             # Join all the threads that were started during the serving time
             for element in thread_list:
                 print("Joining thread with id: " + str(element.ident))
                 element.join()
+            thread_list = []
 
             # Send messages to all connected clients that the server is changing
             change_server()
@@ -403,6 +462,3 @@ if __name__ == "__main__":
                 else:
                     time.sleep(5)
                     timeout_count += 1
-
-    # Join the serving thread
-    t_message.join()

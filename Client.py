@@ -28,21 +28,18 @@ def listen_for_messages(stop_event):
         read, write, errors = select.select([UDPClientSocket], [], [], 1)
         for read_socket in read:
             server_message = UDPClientSocket.recvfrom(bufferSize)
-            print(str(server_message[0]))
+            print(str(server_message[0].decode()))
 
             if "CHANGE-SERVER" in str(server_message[0]):
-                server_info = str(server_message).split(',')
-                if server_info[0] == serverAAddressPort[0] and server_info[1] == serverAAddressPort[1]:
-                    currentServerAddressPort = serverAAddressPort
-                    print("Setting current server to server A")
-                else:
-                    currentServerAddressPort = serverBAddressPort
-                    print("Setting current server to server B")
+                server_info = str(server_message[0].decode()).split(',')
+                currentServerAddressPort = (server_info[1], int(server_info[2]))
+                print("Current host: " + str(currentServerAddressPort))
 
 
 if __name__ == "__main__":
     # TODO: 1) change how rq numbers are generated
     # TODO: 2) client does not get answer from the server if not registered, is this ok?
+    # TODO: 3) make the subjects of interest user input
     while True:
         # Get user input
         print("What would you like to do today?")
