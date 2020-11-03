@@ -2,7 +2,6 @@ import socket
 import json
 import threading
 import select
-import sys
 
 # Server Addresses
 serverAAddressPort = ("127.0.0.1", 1000)
@@ -29,7 +28,7 @@ def listen_for_messages(stop_event):
         read, write, errors = select.select([UDPClientSocket], [], [], 1)
         for read_socket in read:
             server_message = UDPClientSocket.recvfrom(bufferSize)
-            print(str(server_message))
+            print(str(server_message[0]))
 
             if "CHANGE-SERVER" in str(server_message[0]):
                 server_info = str(server_message).split(',')
@@ -147,7 +146,22 @@ if __name__ == "__main__":
                 print("Client wasn't registered, cannot update subjects")
 
         elif user_action == '4':
-            # TODO: add client subject of interest publish
             print("Starting subjects of interest publish")
+            print("Please enter the text you want to publish")
+            text = input()
+
+            # Create publish message
+            publish_message = {"request_type": "PUBLISH", "rq_number": 1, "name": client_name,
+                               "subject": "AI", "text": text}
+            publish_message_json = json.dumps(publish_message)
+            publish_message_bytes = str.encode(publish_message_json)
+
+            try:
+                t_message_event.clear()
+                # Send message to current active server
+                UDPClientSocket.sendto(publish_message_bytes, currentServerAddressPort)
+            except NameError:
+                print("Client wasn't registered, cannot publish messages")
+
         else:
             print("Invalid input. Please try again")

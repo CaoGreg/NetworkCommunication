@@ -1,8 +1,1 @@
 Server A: Beginning of Execution
-Client to Server A: REGISTER 1 Khendek 127.0.0.1 2000
-Server A: Starting Registration for client Khendek
-Server A: Khendek, REGISTERED: 1
-Client to Server A: SUBJECTS 1 Khendek ['AI', 'Cloud']
-Server A: Starting subjects update for client Khendek
-Server A: Khendek, SUBJECTS-UPDATED
-Server A: Khendek, updated: ['AI', 'Cloud'] SUBJECTS-UPDATED

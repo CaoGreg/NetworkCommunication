@@ -88,6 +88,18 @@ def listen_for_messages(stop_event):
                 add_to_server_log("Server A: Starting subjects update for client " + message_dict["name"])
                 update_subjects_thread.start()
 
+            if message_dict["request_type"] == "PUBLISH":
+                # write message to log file
+                client_msg = "Client to Server A: " + message_dict["request_type"] + " " + str(
+                    message_dict["rq_number"]) + " " + message_dict["name"] + " " + str(message_dict["subject"])\
+                             + " " + message_dict["text"]
+                add_to_server_log(client_msg)
+
+                user_publish_thread = threading.Thread(target=user_publish, args=(message_dict,bytes_address_pair[1]))
+                thread_list.append(user_publish_thread)
+                add_to_server_log("Server A: Starting publish for client " + message_dict["name"])
+                user_publish_thread.start()
+
         else:
             # Wait for messages from Server B
             if server_b_address in message and str(server_b_port) in message:
@@ -251,15 +263,15 @@ def subjects_update(subjects_message, client_address):
 
         # Send response to the Client
         message = status + ": " + str(subjects_message["rq_number"]) + " " + subjects_message["name"] \
-                  + " " + str(subjects_message["subjects"])
-        update_message_bytes = str.encode(message)
-        UDPServerSocket.sendto(update_message_bytes, client_address)
+                         + " " + str(subjects_message["subjects"])
+        subj_message_bytes = str.encode(message)
+        UDPServerSocket.sendto(subj_message_bytes, client_address)
 
         # Send Result to Server B and update its memory
         server_msg = status + " " + str(subjects_message["rq_number"]) + " " + str(
             subjects_message["name"]) + " " + str(subjects_message["subjects"]) + "," + serverIP + "," + str(serverPort)
-        register_message_bytes = str.encode(server_msg)
-        UDPClientSocket.sendto(register_message_bytes, server_b_address_port)
+        subject_message_bytes = str.encode(server_msg)
+        UDPClientSocket.sendto(subject_message_bytes, server_b_address_port)
 
         new_reg_memory = str.encode(json.dumps(client_list) + "," + serverIP + "," + str(serverPort))
         UDPClientSocket.sendto(new_reg_memory, server_b_address_port)
@@ -285,6 +297,51 @@ def subjects_update(subjects_message, client_address):
                           str(subjects_message["subjects"]) + " " + status)
         print(subjects_message)
         print(message)
+
+
+def user_publish(publish_message, client_address):
+    user_exists = False
+    subject_exists = False
+    status = ""
+
+    for registered_user in client_list:
+        if registered_user["name"] == publish_message["name"]:
+            user_exists = True
+            if publish_message["subject"] in registered_user["subjects"]:
+                subject_exists = True
+            break
+
+    if user_exists and subject_exists:
+        status = "MESSAGE"
+
+        # Send response to clients with the subject in their interests
+        message = status + ": " + publish_message["name"] + " " + publish_message["subject"]\
+                         + " " + publish_message["text"]
+        publish_message_bytes = str.encode(message)
+        for client in client_list:
+            if publish_message["subject"] in client["subjects"]:
+                UDPServerSocket.sendto(publish_message_bytes, (client["ip"], int(client["socket"])))
+
+        # log the message
+        add_to_server_log("Server A: " + publish_message["name"] + " MESSAGE: " + publish_message["subject"]
+                          + ", " + publish_message["text"])
+        print(message)
+    else:
+        status = "PUBLISH-DENIED"
+        denial_reason = ""
+        if not subject_exists:
+            denial_reason = "The provided subject is either invalid or not in your interests"
+        if not user_exists:
+            denial_reason = "User does not exist"
+
+        # Send response to the Client
+        denial_message = status + ": " + str(publish_message["rq_number"]) + " " + denial_reason
+        publish_denial_message_bytes = str.encode(denial_message)
+        UDPServerSocket.sendto(publish_denial_message_bytes, client_address)
+
+        # log the message
+        add_to_server_log("Server B: " + publish_message["name"] + ", PUBLISH-DENIED: " + denial_reason)
+        print(denial_message)
 
 
 def change_server():

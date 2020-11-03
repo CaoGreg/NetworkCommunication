@@ -1,5 +1,1 @@
 Server B: Beginning of Execution
-Server A to Server B: REGISTERED 1 Khendek 127.0.0.1 2000
-Server A to Server B: [{"name": "Khendek", "ip": "127.0.0.1", "socket": "2000", "subjects": []}]
-Server A to Server B: SUBJECTS-UPDATED 1 Khendek ['AI', 'Cloud']
-Server A to Server B: [{"name": "Khendek", "ip": "127.0.0.1", "socket": "2000", "subjects": ["AI", "Cloud"]}]
