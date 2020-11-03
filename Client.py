@@ -2,6 +2,7 @@ import socket
 import json
 import threading
 import select
+import datetime
 
 # Server Addresses
 serverAAddressPort = ("127.0.0.1", 1000)
@@ -37,9 +38,8 @@ def listen_for_messages(stop_event):
 
 
 if __name__ == "__main__":
-    # TODO: 1) change how rq numbers are generated
-    # TODO: 2) client does not get answer from the server if not registered, is this ok?
-    # TODO: 3) make the subjects of interest user input
+    # TODO: 1) client does not get answer from the server if not registered, is this ok?
+    # TODO: 2) user input for subjects of interest and publishing
     while True:
         # Get user input
         print("What would you like to do today?")
@@ -49,8 +49,8 @@ if __name__ == "__main__":
 
         if user_action == '0':
             # Send register request to both servers
-            registerMessage = {"request_type": "REGISTER", "rq_number": 1, "name": client_name, "ip": ip_address,
-                               "socket": str(socket_number)}
+            registerMessage = {"request_type": "REGISTER", "rq_number": int(datetime.datetime.utcnow().timestamp()),
+                               "name": client_name, "ip": ip_address, "socket": str(socket_number)}
             registerMessageJson = json.dumps(registerMessage)
             registerMessageBytes = str.encode(registerMessageJson)
 
@@ -70,7 +70,8 @@ if __name__ == "__main__":
             print("Starting De-registering")
 
             # Create de-register message
-            de_register_message = {"request_type": "DE-REGISTER", "rq_number": 1, "name": client_name}
+            de_register_message = {"request_type": "DE-REGISTER", "rq_number":
+                                   int(datetime.datetime.utcnow().timestamp()), "name": client_name}
             de_register_message_json = json.dumps(de_register_message)
             de_register_message_bytes = str.encode(de_register_message_json)
 
@@ -114,8 +115,8 @@ if __name__ == "__main__":
                 t_message.start()
 
                 # Create update message
-                update_message = {"request_type": "UPDATE", "rq_number": 1, "name": client_name,
-                                  "ip": ip_address, "socket": socket_number}
+                update_message = {"request_type": "UPDATE", "rq_number": int(datetime.datetime.utcnow().timestamp()),
+                                  "name": client_name, "ip": ip_address, "socket": socket_number}
                 update_message_json = json.dumps(update_message)
                 update_message_bytes = str.encode(update_message_json)
 
@@ -131,7 +132,8 @@ if __name__ == "__main__":
             # TODO: make this user input
             subj = ["AI", "Cloud"]
             # Create subjects message
-            subjects_message = {"request_type": "SUBJECTS", "rq_number": 1, "name": client_name, "subjects": subj}
+            subjects_message = {"request_type": "SUBJECTS", "rq_number": int(datetime.datetime.utcnow().timestamp()),
+                                "name": client_name, "subjects": subj}
             subjects_message_json = json.dumps(subjects_message)
             subjects_message_bytes = str.encode(subjects_message_json)
 
@@ -144,12 +146,13 @@ if __name__ == "__main__":
 
         elif user_action == '4':
             print("Starting subjects of interest publish")
+            # TODO: add user input here for subject
             print("Please enter the text you want to publish")
             text = input()
 
             # Create publish message
-            publish_message = {"request_type": "PUBLISH", "rq_number": 1, "name": client_name,
-                               "subject": "AI", "text": text}
+            publish_message = {"request_type": "PUBLISH", "rq_number": int(datetime.datetime.utcnow().timestamp()),
+                               "name": client_name, "subject": "AI", "text": text}
             publish_message_json = json.dumps(publish_message)
             publish_message_bytes = str.encode(publish_message_json)
 
