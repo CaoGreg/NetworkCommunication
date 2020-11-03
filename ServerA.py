@@ -35,7 +35,6 @@ def listen_for_messages(stop_event):
         # Wait for messages from clients
         bytes_address_pair = UDPServerSocket.recvfrom(bufferSize)
         message = (bytes_address_pair[0].decode())
-        address = bytes_address_pair[1]
 
         # Only answer if the server is serving
         if not stop_event.is_set():
@@ -48,7 +47,7 @@ def listen_for_messages(stop_event):
                              + " " + message_dict["name"] + " " + message_dict["ip"] + " " + str(message_dict["socket"])
                 add_to_server_log(client_msg)
 
-                register_thread = threading.Thread(target=user_registration, args=(message_dict, address,))
+                register_thread = threading.Thread(target=user_registration, args=(message_dict,))
                 thread_list.append(register_thread)
                 register_thread.start()
                 add_to_server_log("Server A: Starting Registration for client " + message_dict["name"])
@@ -63,6 +62,19 @@ def listen_for_messages(stop_event):
                 thread_list.append(de_register_thread)
                 de_register_thread.start()
                 add_to_server_log("Server A: Starting De-Registration for client " + message_dict["name"])
+
+            if message_dict["request_type"] == "UPDATE":
+                # write message to log file
+                client_msg = "Client to Server A: " + message_dict["request_type"] + " " + str(
+                    message_dict["rq_number"]) \
+                             + " " + message_dict["name"] + " " + message_dict["ip"] + " " + str(message_dict["socket"])
+                add_to_server_log(client_msg)
+
+                update_user_thread = threading.Thread(target=user_update, args=(message_dict,))
+                thread_list.append(update_user_thread)
+                update_user_thread.start()
+                add_to_server_log("Server A: Starting user update for client " + message_dict["name"])
+
         else:
             # Wait for messages from Server B
             if server_b_address in message and str(server_b_port) in message:
@@ -80,11 +92,12 @@ def listen_for_messages(stop_event):
                         client_list = json.loads(str(message).split(',' + serverIP)[0])
 
 
-def user_registration(reg_message, client_address):
+def user_registration(reg_message):
     # Check if the user already exists
     user_exists = False
     denial_reason = ""
     status = ""
+    client_address = (reg_message["ip"], int(reg_message["socket"]))
 
     for registered_user in client_list:
         if registered_user["name"] == reg_message["name"]:
@@ -107,8 +120,7 @@ def user_registration(reg_message, client_address):
     else:
         # Add registered user to the list
         registered_message = "REGISTERED: " + str(reg_message["rq_number"])
-        reg_user = {"name": reg_message["name"], "ip": reg_message["ip"],
-                    "socket": reg_message["socket"], "address": client_address}
+        reg_user = {"name": reg_message["name"], "ip": reg_message["ip"], "socket": reg_message["socket"]}
         client_list.append(reg_user)
 
         # Send response to the Client
@@ -155,6 +167,56 @@ def user_de_registration(de_reg_message):
         print(new_reg_memory)
 
 
+def user_update(update_message):
+    client_address = (str(update_message["ip"]), int(update_message["socket"]))
+    user_exists = False
+    denial_reason = ""
+
+    for registered_user in client_list:
+        if registered_user["name"] == update_message["name"]:
+            user_exists = True
+            registered_user["ip"] = update_message["ip"]
+            registered_user["socket"] = update_message["socket"]
+            print("Updating " + registered_user["name"])
+        if registered_user["ip"] == update_message["ip"] and registered_user["socket"] == update_message["socket"] and registered_user["name"] != update_message["name"]:
+            denial_reason = "Requested ip/socket combination already exists"
+            break
+
+    if denial_reason == "" and user_exists is False:
+        denial_reason = "User " + update_message["name"] + " does not exist"
+
+    if user_exists:
+        # Send response to the Client
+        message = "UPDATE-CONFIRMED: " + str(update_message["rq_number"]) + " " + update_message["name"] \
+                  + " " + update_message["ip"] + " " + str(update_message["socket"])
+        update_message_bytes = str.encode(message)
+        UDPServerSocket.sendto(update_message_bytes, client_address)
+
+        # Log the message
+        add_to_server_log("Server A: " + update_message["name"] + ", updated: " +
+                          update_message["ip"] + ": " + str(update_message["socket"]))
+        print(update_message["name"] + ", updated socket")
+
+        # Send result to Server B
+        server_msg = message + "," + serverIP + "," + str(serverPort)
+        update_message_bytes = str.encode(server_msg)
+        UDPClientSocket.sendto(update_message_bytes, server_b_address_port)
+
+        new_reg_memory = str.encode(json.dumps(client_list) + "," + serverIP + "," + str(serverPort))
+        UDPClientSocket.sendto(new_reg_memory, server_b_address_port)
+        print(message)
+        print(new_reg_memory)
+    else:
+        # Send response to the Client
+        denial_message = "UPDATE-DENIED: " + str(update_message["rq_number"]) + ", " + denial_reason
+        update_message_bytes = str.encode(denial_message)
+        UDPServerSocket.sendto(update_message_bytes, client_address)
+
+        # Log the message
+        add_to_server_log("Server A: " + update_message["name"] + ", " + denial_message)
+        print(update_message["name"] + ", " + denial_message)
+
+
 def change_server():
     # Change server message
     change_message = "CHANGE-SERVER," + server_b_address + "," + str(server_b_port)
@@ -162,7 +224,7 @@ def change_server():
 
     # Send the message to each registered user
     for registered_user in client_list:
-        user_address_port = registered_user["address"]
+        user_address_port = (registered_user["ip"], int(registered_user["socket"]))
         UDPClientSocket.sendto(change_message_bytes, user_address_port)
 
     add_to_server_log("Server A: " + change_message)
