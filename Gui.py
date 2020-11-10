@@ -1,5 +1,7 @@
 from tkinter import *
 from PIL import ImageTk, Image
+import urllib.request
+import xml.etree.ElementTree as  ElementTree
 
 class Page(Frame):
     def __init__(self, *args, **kwargs):
@@ -96,8 +98,44 @@ class Page3(Page):
 class Page4(Page):
    def __init__(self, *args, **kwargs):
        Page.__init__(self, *args, **kwargs)
-       label = Label(self, text="This is page 4")
-       label.pack(side="top", fill="both", expand=True)
+       LB1 = Listbox(
+           master=self,
+           selectmode='single',
+           width=600,
+           height=30,
+           fg='black',
+           bg='skyblue')
+       SB = Scrollbar(self, orient='vertical')
+       SB.pack(side=RIGHT, fill=Y)
+       LB1.configure(yscrollcommand=SB.set)
+       SB.configure(command=LB1.yview)
+       SB2 = Scrollbar(self, orient='horizontal')
+       SB2.pack(side=BOTTOM, fill=X)
+       LB1.configure(xscrollcommand=SB2.set)
+       SB2.configure(command=LB1.xview)
+       LB1.pack()
+       
+       LB1.insert('end', "NEWS HEADLINES ")
+       LB1.itemconfig('end', {'bg': 'white'})
+       self.get_news(LB1)
+       LB1.insert('end', "_____________________________________ END")
+
+   def get_news(self, LB1):
+       #TODO Modify this function to take in .json files
+       URL = "http://feeds.bbci.co.uk/news/rss.xml"
+       REQ = urllib.request.urlopen(URL)
+       PAGE = REQ.read()
+       DOC = ElementTree.fromstring(PAGE)
+
+       for item in DOC.iter('item'):
+           title = item.find('title').text
+           pubDate = item.find('pubDate').text
+           LB1.insert('end', pubDate)
+           LB1.insert('end', title)
+           link = item.find('link').text
+           LB1.insert('end', link)
+           LB1.itemconfig('end', {'fg': 'blue'})
+           LB1.insert('end', "-------------------------------------------------")
 
 class MainView(Frame):
     def __init__(self, *args, **kwargs):
