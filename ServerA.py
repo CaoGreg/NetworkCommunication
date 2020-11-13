@@ -114,6 +114,8 @@ def listen_for_messages(stop_event):
                     server_b_address = message_dict["ip"]
                     server_b_port = message_dict["socket"]
                     server_b_address_port = (server_b_address, int(server_b_port))
+                    add_to_server_log("Server B to Server A: " + message_dict["request_type"] + " " +
+                                      str(server_b_address_port))
 
             else:
                 # Wait for messages from Server B
@@ -388,42 +390,68 @@ def update_server_ip():
             if cmd == '0':
                 print("Please enter the new ip ")
                 new_ip = input()
-                if isServerActive == 1:
-                    break
-                print("Please enter the new socket")
-                new_socket = input()
-                if isServerActive == 1:
-                    break
-                # Update ip/socket info
-                if int(new_socket) == server_b_port:
-                    print("Invalid port")
-                    break
-                serverIP = str(new_ip)
-                serverPort = int(new_socket)
+                if not check_valid_ip(new_ip):
+                    print("The IP does not match the correct format.\n")
+                else:
+                    if isServerActive == 1:
+                        break
+                    print("Please enter the new socket")
+                    new_socket = input()
+                    if not check_valid_socket(new_socket):
+                        print("The socket number is not valid.\n")
+                    else:
+                        if isServerActive == 1:
+                            break
+                        # Update ip/socket info
+                        if int(new_socket) == server_b_port:
+                            print("Invalid port")
+                            break
+                        serverIP = str(new_ip)
+                        serverPort = int(new_socket)
 
-                # Stop the listening thread
-                t_message_stop.set()
-                t_message.join()
-                t_message_stop.clear()
+                        # Stop the listening thread
+                        t_message_stop.set()
+                        t_message.join()
+                        t_message_stop.clear()
 
-                # Starting new listening thread with new socket
-                UDPServerSocket.close()
-                UDPServerSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-                UDPServerSocket.bind((serverIP, serverPort))
-                t_message = threading.Thread(target=listen_for_messages, args=(t_message_stop,))
-                t_message.start()
+                        # Starting new listening thread with new socket
+                        UDPServerSocket.close()
+                        UDPServerSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+                        UDPServerSocket.bind((serverIP, serverPort))
+                        t_message = threading.Thread(target=listen_for_messages, args=(t_message_stop,))
+                        t_message.start()
 
-                # Create update message for server B
-                update_message = {"request_type": "UPDATE-SERVER", "ip": serverIP, "socket": str(serverPort)}
-                update_message_json = json.dumps(update_message)
-                update_message_bytes = str.encode(update_message_json)
-                UDPClientSocket.sendto(update_message_bytes, server_b_address_port)
+                        # Create update message for server B
+                        update_message = {"request_type": "UPDATE-SERVER", "ip": serverIP, "socket": str(serverPort)}
+                        update_message_json = json.dumps(update_message)
+                        update_message_bytes = str.encode(update_message_json)
+                        UDPClientSocket.sendto(update_message_bytes, server_b_address_port)
 
 
 def add_to_server_log(log):
     file = open("ServerALog.txt", "a")
     file.write("\n" + log)
     file.close()
+
+
+def check_valid_ip(ip):
+    ipArr = ip.split(".")
+    if len(ipArr) != 4:
+        return False
+    for x in ipArr:
+        if x.lower().islower():
+            return False
+        if int(x) > 255:
+            return False
+    return True
+
+
+def check_valid_socket(socket):
+    if str(socket).lower().islower():
+        return False
+    if socket == 0 or socket > 65535:
+        return False
+    return True
 
 
 if __name__ == "__main__":

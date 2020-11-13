@@ -1,14 +1,7 @@
 Server A: Beginning of Execution
-Server A: CHANGE-SERVER,127.0.0.1,1001
-Server B to Server A: REGISTERED 1 Khendek 127.0.0.1 2000
-Server B to Server A: [{"name": "Khendek", "ip": "127.0.0.1", "socket": "2000", "subjects": []}]
-Server B to Server A: [{"name": "Khendek", "ip": "127.0.0.1", "socket": "2000", "subjects": []}]
+Server A: CHANGE-SERVER,127.0.0.1,355
+Server B to Server A: []
 Server A Resuming Service
-Server A: CHANGE-SERVER,127.0.0.1,1001
-Server B to Server A: SUBJECTS-UPDATED 1 Khendek ['AI', 'Cloud']
-Server B to Server A: [{"name": "Khendek", "ip": "127.0.0.1", "socket": "2000", "subjects": ["AI", "Cloud"]}]
-Server B to Server A: [{"name": "Khendek", "ip": "127.0.0.1", "socket": "2000", "subjects": ["AI", "Cloud"]}]
-Server A Resuming Service
-Server A: CHANGE-SERVER,127.0.0.1,1001
-Server B to Server A: [{"name": "Khendek", "ip": "127.0.0.1", "socket": "2000", "subjects": ["AI", "Cloud"]}]
+Server A: CHANGE-SERVER,127.0.0.1,355
+Server B to Server A: []
 Server A Resuming Service
