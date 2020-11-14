@@ -3,6 +3,7 @@ import json
 import threading
 import select
 import datetime
+import Gui
 
 # Server Addresses
 serverAAddressPort = ("127.0.0.1", 1000)
