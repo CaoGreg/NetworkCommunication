@@ -4,16 +4,28 @@ import urllib.request
 import xml.etree.ElementTree as  ElementTree
 from tkinter import messagebox
 
+#Global Variables for GUI
+global userInput
+name = "Please Enter Your Name"
+postTopicID = 0
+newsFeedTopics = {"AI" : False, "Cloud" : False, "Networking" : False, "Micro controllers" : False, "Micro processors" : False} 
+userInputCommands = {"REGISTER" : 0, "DELETE ACCOUNT" : 1, "UPDATE IP ADDRESS" : 2, "UPDATE TOPICS LIST" : 3, "SUBMIT" : 4} 
+
 class Page(Frame):
     def __init__(self, *args, **kwargs):
         Frame.__init__(self, *args, **kwargs)
     def show(self):
         self.lift()
+    
+    #Button Execution
     def registrationClick(self):
         pass
-    def updateClick(self):
+    def updateTopicsListClick(self):
+        pass
+    def updateIPAddressClick(self):
         pass
     def refreshClick(self):
+        #TODO
         pass
     def accountDeletionClick(self, result):
         #if account exist
@@ -23,6 +35,7 @@ class Page(Frame):
         else:
             response = messagebox.askokcancel("ACCOUNT DELETION ", "Do you wish to delete this account ?")
             if response == True:
+                pass
                 print("OK button clicked")
             elif response == False:
                 print("Cancel button clicked")
@@ -60,8 +73,9 @@ class Page1(Page):
        
 
        #Button
-       Button(self, command=self.registrationClick,text="REGISTER", width=8).grid(row=8, column=2, sticky=W)
-       Button(self, command=self.accountDeletionClick,text="DELETE \nACCOUNT", width=8).grid(row=8, column=4, sticky=W)
+       Button(self, command=self.registrationClick,text="REGISTER", width=8).grid(row=8, column=1, sticky=W)
+       Button(self, command=self.accountDeletionClick,text="DELETE \nACCOUNT", width=8).grid(row=8, column=3, sticky=W)
+       Button(self, command=self.updateIPAddressClick,text="UPDATE IP \nADDRESS", width=8).grid(row=8, column=5, sticky=W)
 
 
 class Page2(Page):
@@ -110,7 +124,7 @@ class Page2(Page):
        textentry_Description.grid(row=7,column=0, columnspan=3, sticky=W)
 
        #Button
-       Button(self, command=self.updateClick, text="UPDATE", width=6).grid(row=3, column=2, sticky=W)
+       Button(self, command=self.updateTopicsListClick, text="UPDATE NEWS FEED\nTOPICS LIST", width=25).grid(row=3, column=1, sticky=W)
        Button(self, command=self.submissionClick, text="SUBMIT", width=6).grid(row=8, column=2, sticky=W)
 
 class Page3(Page):
@@ -186,7 +200,9 @@ class MainView(Frame):
 
         p1.show()
 
+
 if __name__ == "__main__":
+    userInput = 5 #5 = No input Entered
     window = Tk()
     main = MainView(window)
     window.title("Netwok and Communication Project - Client")
@@ -194,4 +210,6 @@ if __name__ == "__main__":
     window.wm_geometry("900x700")
     window.configure(bg="white")
     window.mainloop()
+    print("Debug test______Hmmmmm")
+    
 
