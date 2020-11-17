@@ -47,24 +47,13 @@ class Page(Frame):
         self.popUp = False
         self.entryNewIP = None
         self.entryNewSocket = None
+        self.UserConnectionStatus = "Offline"
 
         #TODO Fix this socket issue (un comment line 52 to observe)
         #self.UDPClientSocket.bind((ip_address, socket_number))
     def show(self):
         self.lift()
 
-    def getPopUpStatus(self):
-        return self.popUp
-    def setPopUpStatus(self, boolVal):
-        self.popUp = boolVal
-    def getEntryNewIP(self):
-        return self.entryNewIP
-    def setEntryNewIP(self, entry):
-        self.entryNewIP = entry
-    def getEntryNewSocket(self):
-        return self.entryNewSocket
-    def setEntryNewSocket(self, entry):
-        self.entryNewSocket = entry
     def listen_for_messages(self, stop_event):
         global currentServerAddressPort
         print("starting message")
@@ -139,18 +128,14 @@ class Page(Frame):
 
         print("Starting ip/socket update")
 
-        self.setPopUpStatus(True)
-        self.createPopUpWindow()
-
-        #TODO Debug and test those entries (didn't tested yet)
+        #TODO Fetch and restart new IP
         # Get new ip/socket info
         #print("Please enter your new ip")
-        #new_ip = input()
-        new_ip = self.getEntryNewIP()
+        new_ip = input()
 
         #print("Please enter your new socket")
-        #new_socket = input()
-        new_socket = self.getEntryNewSocket()
+        new_socket = input()
+
 
         # Update ip/socket info
         ip_address = str(new_ip)
@@ -180,26 +165,7 @@ class Page(Frame):
             print("Client wasn't registered, cannot update ip/socket")
         else:
             print("Client was de-registered")
-    def createPopUpWindow(self):
-        top=self.top=Toplevel(self)
 
-        self.l=Label(top,text="Please enter your new ip")
-        self.l.pack()
-        self.e=Entry(top)
-        self.e.pack()
-        self.k=Label(top,text="Please enter your new socket")
-        self.k.pack()
-        self.i=Entry(top)
-        self.i.pack()
-        self.b=Button(top,command=self.cleanup,text="OK",  width=8)
-        self.b.pack()
-        self.c=Button(top,command=self.cleanup,text="CANCEL",  width=8)
-        self.c.pack()
-    def cleanup(self):
-        #self.setEntryNewIP(self.e.get())
-        #self.setEntryNewSocket(self.i.get())
-        #self.setPopUpStatus(False)
-        self.top.destroy()
 
 
 
@@ -270,7 +236,7 @@ class Page1(Page):
        Page.__init__(self, *args, **kwargs)
        # create a canvas to show image on
        canvas_for_image = Canvas(self, bg='white', height=194, width=259, borderwidth=0, highlightthickness=0)
-       canvas_for_image.grid(row=0, column=3, columnspan=4, sticky='nesw', padx=0, pady=0)
+       canvas_for_image.grid(row=1, column=3, columnspan=4, sticky='nesw', padx=0, pady=0)
        image = Image.open('Registration.png')
        canvas_for_image.image = ImageTk.PhotoImage(image.resize((259, 194), Image.ANTIALIAS))
        canvas_for_image.create_image(0, 0, image=canvas_for_image.image, anchor='nw')
@@ -278,31 +244,23 @@ class Page1(Page):
 
        #Left Side
        #texts
-       Label (self, text='\n\nUser ID:', bg="white", fg="black", font="non 12 bold").grid(row=1, column=0, sticky=W)
-       Label (self, text='\nPassword:', bg="white", fg="black", font="non 12 bold").grid(row=4, column=0, sticky=W)
-       Label (self, text='\nConfirm Password:', bg="white", fg="black", font="non 12 bold").grid(row=6, column=0, sticky=W)
+       Label (self, text='\nUser Connection Status: ' + self.UserConnectionStatus, bg="white", fg="black", font="non 12 bold").grid(row=0, column=7, sticky=W)
+       Label (self, text='\n\nUser ID:', bg="white", fg="black", font="non 12 bold").grid(row=2, column=0, sticky=W)
+       Label (self, text='\nPassword:', bg="white", fg="black", font="non 12 bold").grid(row=5, column=0, sticky=W)
+
 
         #Textbox
        textentry_UserID = Entry(self, width=50,bg="white")
-       textentry_UserID.grid(row=3,column=0, columnspan=3, sticky=W)
+       textentry_UserID.grid(row=4,column=0, columnspan=3, sticky=W)
 
        textentry_Password = Entry(self, width=50,bg="white")
-       textentry_Password.grid(row=5,column=0, columnspan=3, sticky=W)
+       textentry_Password.grid(row=6,column=0, columnspan=3, sticky=W)
 
-       textentry_ConfirmPassword = Entry(self, width=50,bg="white")
-       textentry_ConfirmPassword.grid(row=7,column=0, columnspan=3, sticky=W)
 
        
-       #TODO Fix Bug: Enable/Disable the button when pop up window is triggered
-       #Button
-       if(self.getPopUpStatus() == False):
-           Button(self, command=self.registrationClick,text="REGISTER", width=8,state="active").grid(row=8, column=1, sticky=W)
-           Button(self, command=self.accountDeletionClick,text="DELETE \nACCOUNT", width=8,state="active").grid(row=8, column=3, sticky=W)
-           Button(self, command=self.updateIPAddressClick,text="UPDATE IP \nADDRESS", width=8,state="active").grid(row=8, column=5, sticky=W)
-       else:
-           Button(self, command=self.registrationClick,text="REGISTER", width=8, state="disabled").grid(row=8, column=1, sticky=W)
-           Button(self, command=self.accountDeletionClick,text="DELETE \nACCOUNT", width=8, state="disabled").grid(row=8, column=3, sticky=W)
-           Button(self, command=self.updateIPAddressClick,text="UPDATE IP \nADDRESS", width=8, state="disabled").grid(row=8, column=5, sticky=W)
+       Button(self, command=self.registrationClick,text="REGISTER", width=8,state="active").grid(row=7, column=3, sticky=W)
+       Button(self, command=self.accountDeletionClick,text="DELETE \nACCOUNT", width=8,state="active").grid(row=7, column=5, sticky=W)
+       Button(self, command=self.updateIPAddressClick,text="UPDATE IP \nADDRESS", width=8,state="active").grid(row=7, column=7, sticky=W)
 
 
 class Page2(Page):
@@ -351,8 +309,8 @@ class Page2(Page):
        textentry_Description.grid(row=7,column=0, columnspan=3, sticky=W)
 
        #Button
-       Button(self, command=self.updateTopicsListClick, text="UPDATE NEWS FEED\nTOPICS LIST", width=25).grid(row=3, column=1, sticky=W)
-       Button(self, command=self.submissionClick, text="SUBMIT", width=6).grid(row=8, column=2, sticky=W)
+       Button(self, command=self.updateTopicsListClick, text="UPDATE NEWS FEED\nTOPICS LIST", width=25).grid(row=3, column=2, sticky=W)
+       Button(self, command=self.submissionClick, text="SUBMIT", width=25).grid(row=8, column=2, sticky=W)
 
 class Page3(Page):
    def __init__(self, *args, **kwargs):
