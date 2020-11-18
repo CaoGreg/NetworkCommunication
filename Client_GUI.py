@@ -38,7 +38,7 @@ subjects_of_interest = []
 
 class Page(Frame):
     def __init__(self, *args, **kwargs):
-        Frame.__init__(self, *args, **kwargs)
+        Frame.__init__(self, *args, **kwargs, bg="white")
         self.t_message_event = None
         self.t_message = None
         self.UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
@@ -282,11 +282,11 @@ class Page2(Page):
        CheckVar3 = IntVar()
        CheckVar4 = IntVar()
        CheckVar5 = IntVar()
-       Checkbutton(self, text = "AI", variable = CheckVar1,onvalue = 1, offvalue = 0, height=5, width = 20, ).grid(row=2, column=0, sticky=W)
-       Checkbutton(self, text = "Cloud", variable = CheckVar2, onvalue = 1, offvalue = 0, height=5, width = 20).grid(row=2, column=1, sticky=W)
-       Checkbutton(self, text = "Networking", variable = CheckVar3,onvalue = 1, offvalue = 0, height=5, width = 20, ).grid(row=2, column=2, sticky=W)
-       Checkbutton(self, text = "Micro controllers", variable = CheckVar4, onvalue = 1, offvalue = 0, height=5, width = 20).grid(row=2, column=3, sticky=W)
-       Checkbutton(self, text = "Micro processors", variable = CheckVar5,onvalue = 1, offvalue = 0, height=5, width = 20, ).grid(row=2, column=4, sticky=W)
+       Checkbutton(self, text = "AI", variable = CheckVar1,onvalue = 1, offvalue = 0, height=5, width = 20, bg="white").grid(row=2, column=0, sticky=W)
+       Checkbutton(self, text = "Cloud", variable = CheckVar2, onvalue = 1, offvalue = 0, height=5, width = 20, bg="white").grid(row=2, column=1, sticky=W)
+       Checkbutton(self, text = "Networking", variable = CheckVar3,onvalue = 1, offvalue = 0, height=5, width = 20, bg="white" ).grid(row=2, column=2, sticky=W)
+       Checkbutton(self, text = "Micro controllers", variable = CheckVar4, onvalue = 1, offvalue = 0, height=5, width = 20, bg="white").grid(row=2, column=3, sticky=W)
+       Checkbutton(self, text = "Micro processors", variable = CheckVar5,onvalue = 1, offvalue = 0, height=5, width = 20, bg="white" ).grid(row=2, column=4, sticky=W)
 
 
 
@@ -302,7 +302,7 @@ class Page2(Page):
        counter = 0
        for (text, value) in values.items(): 
            Radiobutton(self, text = text, variable = v, 
-               value = value).grid(row=5,column=counter, sticky=W) 
+               value = value, bg="white").grid(row=5,column=counter, sticky=W) 
            counter = counter + 1
         #Textbox
        textentry_Description = Entry(self, width=50,bg="white")
@@ -358,7 +358,7 @@ class Page3(Page):
 
 class MainView(Frame):
     def __init__(self, *args, **kwargs):
-        Frame.__init__(self, *args, **kwargs)
+        Frame.__init__(self, *args, **kwargs,bg="white")
 
         p1 = Page1(self)
         p2 = Page2(self)
