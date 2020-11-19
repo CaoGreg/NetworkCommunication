@@ -19,7 +19,7 @@ userInputCommands = {"REGISTER" : 0, "DELETE ACCOUNT" : 1, "UPDATE IP ADDRESS" :
 
 
 
-#Global variable for Client
+#Global variable for Client 
 # Server Addresses
 serverAAddressPort = ("127.0.0.1", 1000)
 serverBAddressPort = ("127.0.0.1", 1001)
@@ -172,12 +172,6 @@ class Page(Frame):
 
 
 
-    def refreshClick(self):
-        #TODO
-        pass
-
-
-
 
 
     def accountDeletionClick(self):
@@ -245,7 +239,7 @@ class Page1(Page):
        #Left Side
        #texts
        Label (self, text='\nUser Connection Status: ' + self.UserConnectionStatus, bg="white", fg="black", font="non 12 bold").grid(row=0, column=7, sticky=W)
-       Label (self, text='\n\nUser ID:', bg="white", fg="black", font="non 12 bold").grid(row=2, column=0, sticky=W)
+       Label (self, text='\n\nUsername:', bg="white", fg="black", font="non 12 bold").grid(row=2, column=0, sticky=W)
        Label (self, text='\nPassword:', bg="white", fg="black", font="non 12 bold").grid(row=5, column=0, sticky=W)
 
 
@@ -275,7 +269,8 @@ class Page2(Page):
        #texts and 
        Label (self, text='\n\nSelect your News Feed Topics:', bg="white", fg="black", font="non 12 bold").grid(row=1, column=0, sticky=W)
        Label (self, text="\n\nSelect post's Topic:", bg="white", fg="black", font="non 12 bold").grid(row=4, column=0, sticky=W)
-       Label (self, text='\nType the description:', bg="white", fg="black", font="non 12 bold").grid(row=6, column=0, sticky=W)
+       Label (self, text='\nTitle:', bg="white", fg="black", font="non 12 bold").grid(row=6, column=0, sticky=W)
+       Label (self, text='\nDescription:', bg="white", fg="black", font="non 12 bold").grid(row=8, column=0, sticky=W)
 
        CheckVar1 = IntVar()
        CheckVar2 = IntVar()
@@ -307,10 +302,12 @@ class Page2(Page):
         #Textbox
        textentry_Description = Entry(self, width=50,bg="white")
        textentry_Description.grid(row=7,column=0, columnspan=3, sticky=W)
+       textentry_Description = Entry(self, width=50,bg="white")
+       textentry_Description.grid(row=9,column=0, columnspan=3, sticky=W)
 
        #Button
        Button(self, command=self.updateTopicsListClick, text="UPDATE NEWS FEED\nTOPICS LIST", width=25).grid(row=3, column=2, sticky=W)
-       Button(self, command=self.submissionClick, text="SUBMIT", width=25).grid(row=8, column=2, sticky=W)
+       Button(self, command=self.submissionClick, text="SUBMIT", width=25).grid(row=10, column=2, sticky=W)
 
 class Page3(Page):
    def __init__(self, *args, **kwargs):
@@ -336,25 +333,33 @@ class Page3(Page):
        LB1.itemconfig('end', {'bg': 'white'})
        self.get_news(LB1)
        LB1.insert('end', "_____________________________________ END")
+       def refreshClick():
+           LB1.delete(0, END)
+           LB1.insert('end', "NEWS HEADLINES UPDATED:   " + str(datetime.datetime.utcnow()))
+           LB1.itemconfig('end', {'bg': 'pink'})
+           self.get_news(LB1)
+           LB1.insert('end', "________________________________________________________ END")
+       Button(self, command=refreshClick, text="REFRESH", width=25, bg='#0052cc', fg='#ffffff').pack()
 
-       Button(self, command=self.refreshClick, text="REFRESH", width=25, bg='#0052cc', fg='#ffffff').pack()
 
    def get_news(self, LB1):
        #TODO Modify this function to take in .json files and read news feed
-       URL = "http://feeds.bbci.co.uk/news/rss.xml"
-       REQ = urllib.request.urlopen(URL)
-       PAGE = REQ.read()
-       DOC = ElementTree.fromstring(PAGE)
-
-       for item in DOC.iter('item'):
-           title = item.find('title').text
-           pubDate = item.find('pubDate').text
-           LB1.insert('end', pubDate)
-           LB1.insert('end', title)
-           link = item.find('link').text
-           LB1.insert('end', link)
-           LB1.itemconfig('end', {'fg': 'blue'})
-           LB1.insert('end', "-------------------------------------------------")
+       with open('ArticlesDatabase.txt') as json_file:
+           data = json.load(json_file)
+           for p in data['articles']:
+               LB1.insert('end', p['Title'])
+               LB1.insert('end', p['Description'])
+               LB1.insert('end', 'Publisher:   ' + p['Publisher'])
+               LB1.insert('end', p['Time Stamp'])
+               #pubDate = item.find('pubDate').text
+               #LB1.insert('end', pubDate)
+               #link = item.find('link').text
+               #LB1.insert('end', link)
+               LB1.itemconfig('end', {'fg': 'blue'})
+               LB1.insert('end', "-------------------------------------------------")
+       json_file.close()
+    
+       
 
 class MainView(Frame):
     def __init__(self, *args, **kwargs):
@@ -386,12 +391,66 @@ class MainView(Frame):
         p1.show()
 
 
+#Template
+def generateArticles():
+    data = {}
+    data['articles'] = []
+    data['articles'].append({
+        'Topics': {"AI" : True, "Cloud" : False, "Networking" : True, "Micro controllers" : False, "Micro processors" : False} ,
+        'Title': 'Don’t Fear the Robots, and Other Lessons \nFrom a Study of the Digital Economy',
+        'Description': 'A task force assembled by M.I.T. examined how technology has \nchanged, and will change, the work force.',
+        'Publisher' : 'Tommy',
+        'Time Stamp': '2020/11-19 2:10 AM'
+    })
+    data['articles'].append({
+        'Topics': {"AI" : True, "Cloud" : False, "Networking" : False, "Micro controllers" : False, "Micro processors" : False} ,
+        'Title': 'Tell Your Watch to Hold That Pose',
+        'Description': 'A new app will use high-resolution photographs to authenticate timepieces.',
+        'Publisher' : 'Jimmy',
+        'Time Stamp': '2020/11-19 1:30 AM'
+    })
+    data['articles'].append({
+        'Topics': {"AI" : False, "Cloud" : True, "Networking" : False, "Micro controllers" : False, "Micro processors" : False} ,
+        'Title': 'An efficient and secure data sharing scheme for mobile devices in cloud computing',
+        'Description': 'With the development of big data and cloud computing, more and more enterprises prefer to store their data in cloud and share the data among their authorized employees efficiently and securely. So far, many di..',
+        'Publisher' : 'Sammy',
+        'Time Stamp': '2020/11-19 2:10 AM'
+    })
+    data['articles'].append({
+        'Topics': {"AI" : False, "Cloud" : True, "Networking" : True, "Micro controllers" : False, "Micro processors" : False} ,
+        'Title': 'Grazing trajectory statistics and visualization platform based on cloud GIS',
+        'Description': 'It is very important for ranchers and grassland livestock management departments to master the information on the trajectory and feeding behavior of the herd timely and accurately. Therefore, this study develo...',
+        'Publisher' : 'Alexy',
+        'Time Stamp': '2020/11-19 12:10 AM'
+    })
+    data['articles'].append({
+        'Topics': {"AI" : False, "Cloud" : False, "Networking" : False, "Micro controllers" : True, "Micro processors" : False} ,
+        'Title': 'A .NET micro framework for the STM32',
+        'Description': 'It is wise to ask not only who has the lowest power microcontroller but also under what circumstances? Is it Microchip, Texas Instruments or perhaps another company?',
+        'Publisher' : 'Charly',
+        'Time Stamp': '2020/11-19 7:10 AM'
+    })
+    data['articles'].append({
+        'Topics': {"AI" : False, "Cloud" : False, "Networking" : False, "Micro controllers" : True, "Micro processors" : False} ,
+        'Title': 'Despite challenges, Renesas still dominant in MCUs',
+        'Description': "Japan's Renesas Electronics Corp. remained the dominant supplier of microcontrollers in 2011, despite fallout from the Great East Japan Earthquake that struck last March and wreaked havoc on the company's production capabilities for several months, according to market research firm Databeans Inc.",
+        'Publisher' : 'Bamby',
+        'Time Stamp': '2020/11-19 8:18 AM'
+    })
+    with open('ArticlesDatabase.txt', 'w') as outfile:
+        json.dump(data, outfile)
+    outfile.close()
+    
+
+
+
 if __name__ == "__main__":
 
     # TODO: 1) client does not get answer from the server if not registered, is this ok?
     # TODO: 2) user input for subjects of interest and publishing
     # TODO: 3) link all button and text entry
-
+    # TODO: 4) Create JSON file article
+    #generateArticles()
     window = Tk()
     main = MainView(window)
     window.title("Netwok and Communication Project - Client")
@@ -400,3 +459,6 @@ if __name__ == "__main__":
     window.configure(bg="white")
     window.mainloop()
     
+
+
+
