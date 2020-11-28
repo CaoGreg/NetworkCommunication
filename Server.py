@@ -121,13 +121,13 @@ def listen_for_messages(stop_event):
                 if message_dict["request_type"] == "CURRENT":
                     # write message to log file
                     client_msg = "Client to Server " + serverIP + ": " + message_dict["request_type"] + " " + str(
-                        message_dict["rq_number"]) + " " + message_dict["name"]
+                        message_dict["rq_number"])
                     add_to_server_log(client_msg)
 
                     current_server_thread = threading.Thread(target=current_server,
                                                            args=(message_dict, bytes_address_pair[1]))
                     thread_list.append(current_server_thread)
-                    add_to_server_log("Server " + serverIP + ": Signaling current server for client " + message_dict["name"])
+                    add_to_server_log("Server " + serverIP + ": Signaling current server for client")
                     current_server_thread.start()
             else:
                 # Wait for messages from Other Server
@@ -282,20 +282,26 @@ def user_update(update_message):
 def subjects_update(subjects_message, client_address):
     user_exists = False
     subject_exists = True
+    user_correct = False
     status = ""
 
     for subject in subjects_message["subjects"]:
         if subject not in subjects_list:
             subject_exists = False
+            break
 
     if subject_exists:
         for registered_user in user_list:
             if registered_user["name"] == subjects_message["name"]:
                 user_exists = True
-                registered_user["subjects"] = subjects_message["subjects"]
-                print("Updating " + str(registered_user))
+                # TODO: Check si cest correct
+                if registered_user["ip"] == client_address[0] and registered_user["socket"] == client_address[1]:
+                    user_correct = True
+                    registered_user["subjects"] = subjects_message["subjects"]
+                    print("Updating " + str(registered_user))
+                    break
 
-    if user_exists and subject_exists:
+    if user_exists and subject_exists and user_correct:
         status = "SUBJECTS-UPDATED"
 
         # Send response to the Client
@@ -338,16 +344,20 @@ def subjects_update(subjects_message, client_address):
 def user_publish(publish_message, client_address):
     user_exists = False
     subject_exists = False
+    user_correct = False
     status = ""
 
     for registered_user in user_list:
         if registered_user["name"] == publish_message["name"]:
             user_exists = True
-            if publish_message["subject"] in registered_user["subjects"]:
-                subject_exists = True
-            break
+            # TODO: Check si cest correct
+            if registered_user["ip"] == client_address[0] and registered_user["socket"] == client_address[1]:
+                user_correct_ip = True
+                if publish_message["subject"] in registered_user["subjects"]:
+                    subject_exists = True
+                break
 
-    if user_exists and subject_exists:
+    if user_exists and subject_exists and user_correct:
         status = "MESSAGE"
 
         # Send response to clients with the subject in their interests
@@ -370,6 +380,8 @@ def user_publish(publish_message, client_address):
             denial_reason = "The provided subject is either invalid or not in your interests"
         if not user_exists:
             denial_reason = "User does not exist"
+        if not user_correct_ip:
+            denial_reason = "Not the correct IP address/port"
 
         # Send response to the Client
         denial_message = status + ": " + str(publish_message["rq_number"]) + " " + denial_reason
@@ -388,14 +400,16 @@ def current_server(current_message, client_address):
     server_message_bytes = str.encode(server_msg)
 
     UDPServerSocket.sendto(server_message_bytes, client_address)
-    add_to_server_log("Server " + serverIP + ": " + str(current_message["rq_number"]) + " "
-                      + current_message["name"] + ", " + "CURRENT")
+    add_to_server_log("Server " + serverIP + ": " + str(current_message["rq_number"]) + ", " + "CURRENT")
     print(server_msg)
 
 
-def change_server():
+def change_server(timed_out):
     # Change server message
-    change_message = "CHANGE-SERVER," + other_server_address + "," + str(other_server_port)
+    if not timed_out:
+        change_message = "CHANGE-SERVER," + other_server_address + "," + str(other_server_port)
+    else:
+        change_message = "CHANGE-SERVER," + serverIP + "," + str(serverPort)
     change_message_bytes = str.encode(change_message)
 
     # Send the message to each registered user
@@ -490,9 +504,8 @@ if __name__ == "__main__":
             # Serving time
             print("Server Listening")
             time.sleep(int(activeTimeInput))
-
+            isServerActive = False
             # TODO
-            # isChanging = True
             # save users to user file
 
             # Join all the threads that were started during the serving time and clear the list
@@ -501,24 +514,23 @@ if __name__ == "__main__":
                 element.join()
             thread_list = []
 
-            # Send messages to all connected clients that the server is changing
-            change_server()
-
             # Update Other Server and Tell it to start serving
             new_memory = str.encode(json.dumps(user_list) + "," + serverIP + "," + str(serverPort))
             UDPClientSocket.sendto(new_memory, other_server_address_port)
-
             up_message_bytes = str.encode("SERVER UP," + serverIP + "," + str(serverPort))
             UDPClientSocket.sendto(up_message_bytes, other_server_address_port)
             print("Sent server up to " + other_server_address)
-            isServerActive = False
+
+            # Send messages to all connected clients that the server is changing
+            change_server(False)
         else:
             # If Other Server takes to long to respond, timeout and start serving again
             timeout_count = 0
             while not isServerActive:
                 if timeout_count >= int(timeOutInput):
                     isServerActive = True
-                    print("Time out")
+                    print("Timed out, sending CHANGE-SERVER to client")
+                    change_server(True)
                 else:
                     time.sleep(1)
                     timeout_count += 1
