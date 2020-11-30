@@ -1,0 +1,10 @@
+Server 192.168.2.13: Beginning of Execution
+Client to Server 192.168.2.13: REGISTER 1606722473 Greg 192.168.2.13 61642
+Server 192.168.2.13: Starting Registration for client Greg
+Server 192.168.2.13: 1606722473 Greg, REGISTERED: 1606722473
+Client to Server 192.168.2.13: SUBJECTS 1606722494 Greg ['AI']
+Server 192.168.2.13: Starting subjects update for client Greg
+Server 192.168.2.13: 1606722494 Greg, updated: ['AI'] SUBJECTS-UPDATED
+Client to Server 192.168.2.13: PUBLISH 1606722573 Greg AI bruh
+Server 192.168.2.13: Starting publish for client Greg
+Server 192.168.2.13: 1606722573 Greg MESSAGE: AI, bruh

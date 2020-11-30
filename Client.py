@@ -5,7 +5,7 @@ import select
 import datetime
 import time
 
-import Gui
+from GUI import Gui
 
 # Server Addresses
 serverAAddressPort = ""
@@ -16,18 +16,22 @@ currentServerAddressPort = ""
 # Client info
 client_name = ""
 ip_address = ""
-socket_number = 2000    # Random number for initialization, will get overwritten later
+socket_number = 0  # Random number for initialization, will get overwritten later
 subjects_of_interest = []
 isListening = False
-count_time_out = 10     # Random number for initialization, will get overwritten later
+count_time_out = 10  # Random number for initialization, will get overwritten later
+awaitingResponse = False
 
 # Create a UDP socket at client side
 UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-UDPClientSocket.connect(("8.8.8.8",80))
+UDPClientSocket.connect(("8.8.8.8", 80))
 ip_address = str(UDPClientSocket.getsockname()[0])
 UDPClientSocket.close()
 UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 UDPClientSocket.bind((ip_address, socket_number))
+socket_number = UDPClientSocket.getsockname()[1]
+print("Starting client")
+print("My IP address is " + ip_address + " and my port is " + str(socket_number))
 
 
 def listen_for_messages(stop_event):
@@ -35,11 +39,14 @@ def listen_for_messages(stop_event):
     global serverAAddressPort
     global serverBAddressPort
     global subjects_of_interest
-    print("starting message")
+    global awaitingResponse
+    print("Listening for messages")
+
     # Wait for messages
     while not stop_event.is_set():
         read, write, errors = select.select([UDPClientSocket], [], [], 1)
         for read_socket in read:
+            # TODO: le fucking truc read pareil fix this
             server_message = UDPClientSocket.recvfrom(bufferSize)
             print(str(server_message[0].decode()))
             # TODO: Check si ca marche
@@ -47,6 +54,7 @@ def listen_for_messages(stop_event):
                 subject_info = str(server_message[0].decode()).split(' ')
                 subjects_of_interest = subject_info[3]
                 print("New subject of interests: " + subjects_of_interest)
+                awaitingResponse = False
             if "CHANGE-SERVER" in str(server_message[0]):
                 server_info = str(server_message[0].decode()).split(',')
                 nextServerAddressPort = (server_info[1], int(server_info[2]))
@@ -56,6 +64,10 @@ def listen_for_messages(stop_event):
                     serverAAddressPort = nextServerAddressPort
                 currentServerAddressPort = nextServerAddressPort
                 print("Current host: " + str(currentServerAddressPort))
+
+            if "SUBJECTS-REJECTED" or "PUBLISH-DENIED" or "PUBLISH-CONFIRMED" in str(server_message[0]):
+                awaitingResponse = False
+
 
 
 def isValidIpAddress(ip):
@@ -157,7 +169,7 @@ if __name__ == "__main__":
 
                 # Create de-register message
                 de_register_message = {"request_type": "DE-REGISTER", "rq_number":
-                                       int(datetime.datetime.utcnow().timestamp()), "name": client_name}
+                    int(datetime.datetime.utcnow().timestamp()), "name": client_name}
                 de_register_message_json = json.dumps(de_register_message)
                 de_register_message_bytes = str.encode(de_register_message_json)
 
@@ -202,18 +214,29 @@ if __name__ == "__main__":
 
             # Send message to current active server
             UDPClientSocket.sendto(update_message_bytes, currentServerAddressPort)
-            msg = UDPClientSocket.recvfrom(bufferSize)
-            if "UPDATE-CONFIRMED" in str(msg):
-                client_name = name
-            if not isListening:
-                if "UPDATE-CONFIRMED" in str(msg):
-                    # Start listening to the server
-                    isListening = True
-                    t_message_event = threading.Event()
-                    t_message = threading.Thread(target=listen_for_messages, args=(t_message_event,))
-                    t_message.start()
 
-                print(msg)
+            while count > 0:
+                read, write, errors = select.select([UDPClientSocket], [], [], 1)
+                for read_socket in read:
+                    msg = UDPClientSocket.recvfrom(bufferSize)
+                    if "UPDATE-CONFIRMED" in str(msg):
+                        client_name = name
+                    if not isListening:
+                        if "UPDATE-CONFIRMED" in str(msg):
+                            # Start listening to the server
+                            isListening = True
+                            t_message_event = threading.Event()
+                            t_message = threading.Thread(target=listen_for_messages, args=(t_message_event,))
+                            t_message.start()
+                        print(msg)
+                    break
+                else:
+                    count = count - 1
+                    continue
+                break
+            else:
+                print("Timed out. No response from the server. Please try again.")
+
         # Subject of interest
         elif user_action == '3':
             if currentServerAddressPort == "" or not isListening or client_name == "":
@@ -231,15 +254,32 @@ if __name__ == "__main__":
                         subject_done = True
                 print("List to be sent to the server: " + str(subj))
                 # Create subjects message
-                subjects_message = {"request_type": "SUBJECTS", "rq_number": int(datetime.datetime.utcnow().timestamp()),
-                                    "name": client_name, "subjects": subj}
+                subjects_message = {"request_type": "SUBJECTS", "rq_number":
+                                    int(datetime.datetime.utcnow().timestamp()), "name": client_name, "subjects": subj}
                 subjects_message_json = json.dumps(subjects_message)
                 subjects_message_bytes = str.encode(subjects_message_json)
 
                 try:
                     t_message_event.clear()
+                    awaitingResponse = True
                     # Send message to current active server
                     UDPClientSocket.sendto(subjects_message_bytes, currentServerAddressPort)
+
+                    # Wait for a response
+                    count = count_time_out
+
+                    while count > 0:
+                        if awaitingResponse:
+                            time.sleep(1)
+                            count = count - 1
+                            continue
+                        else:
+                            break
+                        break
+                    else:
+                        print("Timed out waiting for response, please try again.")
+                        awaitingResponse = False
+
                 except NameError:
                     print("Client wasn't registered, cannot update subjects")
         # Publish
@@ -248,7 +288,7 @@ if __name__ == "__main__":
                 print("You need to register or update your information first")
             else:
                 print("Starting subjects of interest publish")
-                print("These are you subjects of interest: " + subjects_of_interest)
+                print("These are you subjects of interest: " + str(subjects_of_interest))
                 subject = input("To which subject do you want to publish? (This is case sensitive)")
                 print("Please enter the text you want to publish")
                 text = input()
@@ -261,8 +301,24 @@ if __name__ == "__main__":
 
                 try:
                     t_message_event.clear()
+                    awaitingResponse = True
                     # Send message to current active server
                     UDPClientSocket.sendto(publish_message_bytes, currentServerAddressPort)
+
+                    # Wait for a response
+                    count = count_time_out
+
+                    while count > 0:
+                        if awaitingResponse:
+                            time.sleep(1)
+                            count = count - 1
+                            continue
+                        else:
+                            break
+                        break
+                    else:
+                        print("Timed out waiting for response, please try again.")
+                        awaitingResponse = False
                 except NameError:
                     print("Client wasn't registered, cannot publish messages")
 

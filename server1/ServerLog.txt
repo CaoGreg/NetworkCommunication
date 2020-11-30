@@ -1,0 +1,5 @@
+Server 192.168.2.13: Beginning of Execution
+Server 192.168.2.13 to Server 192.168.2.13: REGISTERED 1606722473 Greg 192.168.2.13 61642
+Server 192.168.2.13 to Server 192.168.2.13: [{"name": "Greg", "ip": "192.168.2.13", "socket": "61642", "subjects": []}]
+Server 192.168.2.13 to Server 192.168.2.13: SUBJECTS-UPDATED 1606722494 Greg ['AI']
+Server 192.168.2.13 to Server 192.168.2.13: [{"name": "Greg", "ip": "192.168.2.13", "socket": "61642", "subjects": ["AI"]}]
