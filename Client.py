@@ -206,9 +206,10 @@ if __name__ == "__main__":
                 current_message_json = json.dumps(current_message)
                 current_message_bytes = str.encode(current_message_json)
 
+                # TODO add timeout here
                 # Send message to both servers
-                UDPClientSocket.sendto(update_message_bytes, serverAAddressPort)
-                UDPClientSocket.sendto(update_message_bytes, serverBAddressPort)
+                UDPClientSocket.sendto(current_message_bytes, serverAAddressPort)
+                UDPClientSocket.sendto(current_message_bytes, serverBAddressPort)
 
                 msg = UDPClientSocket.recvfrom(bufferSize)
                 currentServerAddressPort = msg[1]
