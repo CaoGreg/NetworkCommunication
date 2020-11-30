@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import datetime
 import socket
 import threading
 import time
@@ -14,6 +15,7 @@ user_list = []
 subjects_list = ["AI", "Cloud", "Networking", "Micro controllers", "Micro processors"]
 t_message_stop = threading.Event()
 global t_message
+shutdown_server = False
 
 # Create a datagram socket
 UDPServerSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
@@ -39,6 +41,7 @@ def listen_for_messages(stop_event):
     global other_server_address
     global other_server_port
     global other_server_address_port
+    global shutdown_server
 
     while not stop_event.is_set():
         # Wait for messages from clients
@@ -111,13 +114,14 @@ def listen_for_messages(stop_event):
                     thread_list.append(user_publish_thread)
                     add_to_server_log("Server " + serverIP + ": Starting publish for client " + message_dict["name"])
                     user_publish_thread.start()
-                #
-                # if message_dict["request_type"] == "UPDATE-SERVER":
-                #     server_b_address = message_dict["ip"]
-                #     server_b_port = message_dict["socket"]
-                #     server_b_address_port = (server_b_address, int(server_b_port))
-                #     add_to_server_log("Server " + other_server_address + " to Server " + serverIP + ": " + message_dict["request_type"] + " " +
-                #                       str(server_b_address_port))
+
+                if message_dict["request_type"] == "UPDATE-SERVER":
+                    # TODO start a thread
+                    server_update_thread = threading.Thread(target=update_server, args=(message_dict, ))
+                    thread_list.append(server_update_thread)
+                    add_to_server_log("Server " + other_server_address + " to Server " + serverIP + ": "
+                                      + message_dict["request_type"] + " " + str(other_server_port))
+                    server_update_thread.start()
 
                 if message_dict["request_type"] == "CURRENT":
                     # write message to log file
@@ -142,6 +146,9 @@ def listen_for_messages(stop_event):
                         other_server_client_msg = "Server " + other_server_address + " to Server " + serverIP + ": " + str(message).split(',' + other_server_address)[0]
                         add_to_server_log(other_server_client_msg)
 
+                        if "SHUTDOWN-SERVER" in message:
+                            add_to_server_log("Received SHUTDOWN-SERVER " + serverIP + " " + str(serverPort))
+                            shutdown_server = True
                         # Check if it is a memory update
                         if '[{' in message:
                             user_list = json.loads(str(message).split(',' + other_server_address)[0])
@@ -295,12 +302,10 @@ def subjects_update(subjects_message, client_address):
         for registered_user in user_list:
             if registered_user["name"] == subjects_message["name"]:
                 user_exists = True
-                # TODO: Check si cest correct
+
                 if registered_user["ip"] == str(client_address[0]) and registered_user["socket"] == str(client_address[1]):
-                    print("User: " + registered_user["name"] + "ip and socket are good")
                     user_correct_ip = True
                     registered_user["subjects"] = subjects_message["subjects"]
-                    print("Updating " + str(registered_user))
                     break
 
     if user_exists and subject_exists and user_correct_ip:
@@ -350,12 +355,10 @@ def user_publish(publish_message, client_address):
     status = ""
 
     for registered_user in user_list:
-        print("User: " + registered_user["name"])
         if registered_user["name"] == publish_message["name"]:
             user_exists = True
-            # TODO: Check si cest correct
+
             if registered_user["ip"] == str(client_address[0]) and registered_user["socket"] == str(client_address[1]):
-                print("User: " + registered_user["name"] + "has correct address")
                 user_correct_ip = True
                 if publish_message["subject"] in registered_user["subjects"]:
                     subject_exists = True
@@ -370,7 +373,6 @@ def user_publish(publish_message, client_address):
                          + " " + publish_message["text"]
         subj_message_bytes = str.encode(response)
         UDPServerSocket.sendto(subj_message_bytes, client_address)
-
 
         # Send response to clients with the subject in their interests
         message = status + ": " + publish_message["name"] + " " + publish_message["subject"]\
@@ -431,6 +433,62 @@ def change_server(timed_out):
         UDPClientSocket.sendto(change_message_bytes, user_address_port)
 
     add_to_server_log("Server " + serverIP + ": " + change_message)
+
+
+def update_server(update_server_message):
+    global other_server_address_port
+    global other_server_address
+    global other_server_port
+
+    # TODO send to other server to shutdown
+    shutdown_server_message_bytes = str.encode("SHUTDOWN-SERVER," + serverIP + "," + str(serverPort))
+    UDPClientSocket.sendto(shutdown_server_message_bytes, other_server_address_port)
+
+    other_server_address = update_server_message["ip"]
+    other_server_port = update_server_message["socket"]
+    other_server_address_port = (other_server_address, int(other_server_port))
+    add_to_server_log("Server " + serverIP + " UPDATE-SERVER:" + str(other_server_address_port))
+
+
+def send_update_server():
+    # Sending current to check that the other server is active
+    current_message = {"request_type": "CURRENT", "rq_number": int(datetime.datetime.utcnow().timestamp()),
+                       "ip": serverIP, "socket": serverPort}
+    current_message_json = json.dumps(current_message)
+    current_message_bytes = str.encode(current_message_json)
+    UDPClientSocket.sendto(current_message_bytes, other_server_address_port)
+
+    count = 5  # TODO hardcoded here
+    while count > 0:
+        read, write, errors = select.select([UDPClientSocket], [], [], 1)
+        for read_socket in read:
+            try:
+                msg = UDPClientSocket.recvfrom(bufferSize)
+                if "CURRENT" in str(msg):
+                    print("Received confirmation, starting UPDATE-SERVER")
+                else:
+                    print("Did no receive confirmation, aborting UPDATE-SERVER")
+                    continue
+                print(msg)
+            except socket.error as err:
+                print("Caught an exception with the socket: " + str(err))
+                continue
+            break
+        else:
+            count = count - 1
+            continue
+        break
+    else:
+        print("Timed out. No response from the other server.\n")
+        return
+
+    # TODO check if this whole function is good
+    print("hehexd")
+    # Sending current to check that the other server is active
+    update_server_message = {"request_type": "UPDATE-SERVER", "ip": serverIP, "socket": serverPort}
+    update_server_message_json = json.dumps(update_server_message)
+    update_server_message_bytes = str.encode(update_server_message_json)
+    UDPClientSocket.sendto(update_server_message_bytes, other_server_address_port)
 
 
 def add_to_server_log(log):
@@ -495,6 +553,10 @@ if __name__ == "__main__":
         isServerActive = True
     else:
         isServerActive = False
+        updateInput = input("Are you updating the server's IP/Port? 1 for Yes, anything else for No\n")
+        if updateInput == "1":
+            # TODO is this legit?
+            send_update_server()
 
     validInput = False
     while not validInput:
@@ -512,7 +574,7 @@ if __name__ == "__main__":
         else:
             print("Incorrect number\n")
 
-    while True:
+    while not shutdown_server:
         if isServerActive:
             # Serving time
             print("Server Listening")
@@ -540,6 +602,14 @@ if __name__ == "__main__":
             # If Other Server takes to long to respond, timeout and start serving again
             timeout_count = 0
             while not isServerActive:
+                if shutdown_server:
+                    print("Server address has been updated, shutting down server")
+
+                    # Joining message thread
+                    t_message_stop.set()
+                    t_message.join()
+                    break
+
                 if timeout_count >= int(timeOutInput):
                     isServerActive = True
                     print("Timed out, sending CHANGE-SERVER to client")
@@ -547,3 +617,6 @@ if __name__ == "__main__":
                 else:
                     time.sleep(1)
                     timeout_count += 1
+
+    # Server was shutdown, closing socket
+    UDPServerSocket.close()
