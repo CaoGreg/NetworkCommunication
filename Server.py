@@ -293,13 +293,9 @@ def subjects_update(subjects_message, client_address):
 
     if subject_exists:
         for registered_user in user_list:
-            print("User: " + registered_user["name"])
             if registered_user["name"] == subjects_message["name"]:
-                print("User: " + registered_user["name"] + "exists")
                 user_exists = True
                 # TODO: Check si cest correct
-                print("Reg user ip: " + registered_user["ip"] + " " + registered_user["socket"])
-                print("client ip: " + str(client_address[0]) + str(client_address[1]))
                 if registered_user["ip"] == str(client_address[0]) and registered_user["socket"] == str(client_address[1]):
                     print("User: " + registered_user["name"] + "ip and socket are good")
                     user_correct_ip = True
@@ -356,11 +352,8 @@ def user_publish(publish_message, client_address):
     for registered_user in user_list:
         print("User: " + registered_user["name"])
         if registered_user["name"] == publish_message["name"]:
-            print("User: " + registered_user["name"] + " exists")
             user_exists = True
             # TODO: Check si cest correct
-            print("Reg user ip: " + registered_user["ip"] + " " + registered_user["socket"])
-            print("client ip: " + str(client_address[0]) + str(client_address[1]))
             if registered_user["ip"] == str(client_address[0]) and registered_user["socket"] == str(client_address[1]):
                 print("User: " + registered_user["name"] + "has correct address")
                 user_correct_ip = True
@@ -446,7 +439,7 @@ def add_to_server_log(log):
     file.close()
 
 
-def isValidIpAddress(ip):
+def is_valid_ip_address(ip):
     ipArr = ip.split(".")
     if len(ipArr) != 4:
         return False
@@ -458,7 +451,7 @@ def isValidIpAddress(ip):
     return True
 
 
-def isValidPort(port):
+def is_valid_port(port):
     if not port.isnumeric():
         return False
     if str(port).lower().islower():
@@ -479,7 +472,7 @@ if __name__ == "__main__":
     validInput = False
     while not validInput:
         ipInput = input("What is the other server's IP address?\n")
-        if isValidIpAddress(ipInput):
+        if is_valid_ip_address(ipInput):
             other_server_address = ipInput
             validInput = True
         else:
@@ -488,7 +481,7 @@ if __name__ == "__main__":
     validInput = False
     while not validInput:
         portInput = input("What is the other server's port?\n")
-        if isValidPort(portInput):
+        if is_valid_port(portInput):
             other_server_port = int(portInput)
             validInput = True
         else:

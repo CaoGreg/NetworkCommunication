@@ -40,14 +40,23 @@ def listen_for_messages(stop_event):
     global serverBAddressPort
     global subjects_of_interest
     global awaitingResponse
+    has_error = False
     print("Listening for messages")
 
     # Wait for messages
     while not stop_event.is_set():
         read, write, errors = select.select([UDPClientSocket], [], [], 1)
         for read_socket in read:
-            # TODO: le fucking truc read pareil fix this
-            server_message = UDPClientSocket.recvfrom(bufferSize)
+            try:
+                server_message = UDPClientSocket.recvfrom(bufferSize)
+            except socket.error as err:
+                print("Caught an exception with the socket: " + str(err))
+                has_error = True
+
+            if has_error:
+                has_error = False
+                break
+
             print(str(server_message[0].decode()))
             # TODO: Check si ca marche
             if "SUBJECTS-UPDATED" in str(server_message[0]):
@@ -69,8 +78,7 @@ def listen_for_messages(stop_event):
                 awaitingResponse = False
 
 
-
-def isValidIpAddress(ip):
+def is_valid_ip_address(ip):
     ipArr = ip.split(".")
     if len(ipArr) != 4:
         return False
@@ -82,7 +90,7 @@ def isValidIpAddress(ip):
     return True
 
 
-def isValidPort(port):
+def is_valid_port(port):
     if not port.isnumeric():
         return False
     if str(port).lower().islower():
@@ -92,31 +100,31 @@ def isValidPort(port):
     return True
 
 
-def getAddressAndPort(server):
-    validInput = False
-    while not validInput:
-        ipInput = input("What is the " + server + " server's IP address?\n")
-        if isValidIpAddress(ipInput):
-            serverAddress = ipInput
-            validInput = True
+def get_address_and_port(server):
+    valid_input = False
+    while not valid_input:
+        ip_input = input("What is the " + server + " server's IP address?\n")
+        if is_valid_ip_address(ip_input):
+            server_address = ip_input
+            valid_input = True
         else:
             print("Incorrect IP address format\n")
 
-    validInput = False
-    while not validInput:
-        portInput = input("What is the " + server + " server's port?\n")
-        if isValidPort(portInput):
-            serverPort = int(portInput)
-            validInput = True
+    valid_input = False
+    while not valid_input:
+        port_input = input("What is the " + server + " server's port?\n")
+        if is_valid_port(port_input):
+            server_port = int(port_input)
+            valid_input = True
         else:
             print("Incorrect port number\n")
-    return (serverAddress, int(serverPort))
+    return (server_address, int(server_port))
 
 
 if __name__ == "__main__":
     # Get the servers information
-    serverAAddressPort = getAddressAndPort("first")
-    serverBAddressPort = getAddressAndPort("second")
+    serverAAddressPort = get_address_and_port("first")
+    serverBAddressPort = get_address_and_port("second")
     count_time_out = int(input("How long should I wait for a response before timing out?\n"))
 
     while True:
