@@ -126,7 +126,7 @@ def listen_for_messages(stop_event):
                     add_to_server_log(client_msg)
 
                     current_server_thread = threading.Thread(target=current_server,
-                                                           args=(message_dict, bytes_address_pair[1]))
+                                                             args=(message_dict, bytes_address_pair[1]))
                     thread_list.append(current_server_thread)
                     add_to_server_log("Server " + serverIP + ": Signaling current server for client")
                     current_server_thread.start()

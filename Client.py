@@ -8,10 +8,10 @@ import time
 from GUI import Gui
 
 # Server Addresses
-serverAAddressPort = ""
-serverBAddressPort = ""
+serverAAddressPort = ()
+serverBAddressPort = ()
 bufferSize = 1024
-currentServerAddressPort = ""
+currentServerAddressPort = ()
 
 # Client info
 client_name = ""
@@ -51,10 +51,6 @@ def listen_for_messages(stop_event):
                 server_message = UDPClientSocket.recvfrom(bufferSize)
             except socket.error as err:
                 print("Caught an exception with the socket: " + str(err))
-                has_error = True
-
-            if has_error:
-                has_error = False
                 break
 
             print(str(server_message[0].decode()))
@@ -76,6 +72,7 @@ def listen_for_messages(stop_event):
 
             if "SUBJECTS-REJECTED" or "PUBLISH-DENIED" or "PUBLISH-CONFIRMED" in str(server_message[0]):
                 awaitingResponse = False
+    print("Shutting down message thread")
 
 
 def is_valid_ip_address(ip):
@@ -118,7 +115,8 @@ def get_address_and_port(server):
             valid_input = True
         else:
             print("Incorrect port number\n")
-    return (server_address, int(server_port))
+    tuple_output = (server_address, int(server_port))
+    return tuple_output
 
 
 if __name__ == "__main__":
@@ -148,29 +146,33 @@ if __name__ == "__main__":
             while count > 0:
                 read, write, errors = select.select([UDPClientSocket], [], [], 1)
                 for read_socket in read:
-                    msg = UDPClientSocket.recvfrom(bufferSize)
-                    if "REGISTERED" in str(msg):
-                        client_name = name
-                    if not isListening:
+                    try:
+                        msg = UDPClientSocket.recvfrom(bufferSize)
                         if "REGISTERED" in str(msg):
-                            currentServerAddressPort = msg[1]
-                            # Start listening to the server
-                            isListening = True
-                            t_message_event = threading.Event()
-                            t_message = threading.Thread(target=listen_for_messages, args=(t_message_event,))
-                            t_message.start()
-                        print(msg)
-                    break
+                            client_name = name
+                        if not isListening:
+                            if "REGISTERED" in str(msg):
+                                currentServerAddressPort = msg[1]
+                                # Start listening to the server
+                                isListening = True
+                                t_message_event = threading.Event()
+                                t_message = threading.Thread(target=listen_for_messages, args=(t_message_event,))
+                                t_message.start()
+                            print(msg)
+                        break
+                    except socket.error as err:
+                        print("Caught an exception with the socket: " + str(err))
+                        continue
                 else:
                     count = count - 1
                     continue
                 break
             else:
-                print("Timed out. No response from the server. Please try again.")
+                print("Timed out. No response from the server. Please try again.\n")
 
         # De-register
         elif user_action == '1':
-            if currentServerAddressPort == "" or not isListening or client_name == "":
+            if currentServerAddressPort == () or not isListening or client_name == "":
                 print("You need to register or update your information first")
             else:
                 print("Starting De-registering")
@@ -183,7 +185,7 @@ if __name__ == "__main__":
 
                 # Send message to current active server
                 UDPClientSocket.sendto(de_register_message_bytes, currentServerAddressPort)
-                currentServerAddressPort = ""
+                currentServerAddressPort = ()
                 client_name = ""
                 subjects_of_interest = []
                 # Stop the listening thread
@@ -199,21 +201,39 @@ if __name__ == "__main__":
         # Update
         elif user_action == '2':
             print("Starting ip/socket update")
-            if currentServerAddressPort == "":
+            if currentServerAddressPort == ():
                 # Send current request to both servers
                 current_message = {"request_type": "CURRENT", "rq_number": int(datetime.datetime.utcnow().timestamp()),
                                    "ip": ip_address, "socket": socket_number}
                 current_message_json = json.dumps(current_message)
                 current_message_bytes = str.encode(current_message_json)
 
-                # TODO add timeout here
                 # Send message to both servers
                 UDPClientSocket.sendto(current_message_bytes, serverAAddressPort)
                 UDPClientSocket.sendto(current_message_bytes, serverBAddressPort)
 
-                msg = UDPClientSocket.recvfrom(bufferSize)
-                currentServerAddressPort = msg[1]
+                count = count_time_out
+                while count > 0:
+                    read, write, errors = select.select([UDPClientSocket], [], [], 1)
+                    for read_socket in read:
+                        try:
+                            msg = UDPClientSocket.recvfrom(bufferSize)
+                            if "CURRENT" in str(msg):
+                                currentServerAddressPort = msg[1]
+                            print(msg)
+                        except socket.error as err:
+                            print("Caught an exception with the socket: " + str(err))
+                            continue
+                        break
+                    else:
+                        count = count - 1
+                        continue
+                    break
+                else:
+                    print("Timed out. No response from the server. Please try again.\n")
+                    continue
 
+            print(currentServerAddressPort)
             # Send update request to current server
             name = input("What is your name?\n")
             update_message = {"request_type": "UPDATE", "rq_number": int(datetime.datetime.utcnow().timestamp()),
@@ -227,28 +247,32 @@ if __name__ == "__main__":
             while count > 0:
                 read, write, errors = select.select([UDPClientSocket], [], [], 1)
                 for read_socket in read:
-                    msg = UDPClientSocket.recvfrom(bufferSize)
-                    if "UPDATE-CONFIRMED" in str(msg):
-                        client_name = name
-                    if not isListening:
+                    try:
+                        msg = UDPClientSocket.recvfrom(bufferSize)
                         if "UPDATE-CONFIRMED" in str(msg):
-                            # Start listening to the server
-                            isListening = True
-                            t_message_event = threading.Event()
-                            t_message = threading.Thread(target=listen_for_messages, args=(t_message_event,))
-                            t_message.start()
-                        print(msg)
-                    break
+                            client_name = name
+                        if not isListening:
+                            if "UPDATE-CONFIRMED" in str(msg):
+                                # Start listening to the server
+                                isListening = True
+                                t_message_event = threading.Event()
+                                t_message = threading.Thread(target=listen_for_messages, args=(t_message_event,))
+                                t_message.start()
+                            print(msg)
+                        break
+                    except socket.error as err:
+                        print("Caught an exception with the socket: " + str(err))
+                        continue
                 else:
                     count = count - 1
                     continue
                 break
             else:
-                print("Timed out. No response from the server. Please try again.")
+                print("Timed out. No response from the server. Please try again.\n")
 
         # Subject of interest
         elif user_action == '3':
-            if currentServerAddressPort == "" or not isListening or client_name == "":
+            if currentServerAddressPort == () or not isListening or client_name == "":
                 print("You need to register or update your information first")
             else:
                 print("Starting subjects of interest update")
@@ -286,14 +310,14 @@ if __name__ == "__main__":
                             break
                         break
                     else:
-                        print("Timed out waiting for response, please try again.")
+                        print("Timed out waiting for response, please try again.\n")
                         awaitingResponse = False
 
                 except NameError:
                     print("Client wasn't registered, cannot update subjects")
         # Publish
         elif user_action == '4':
-            if currentServerAddressPort == "" or not isListening or client_name == "":
+            if currentServerAddressPort == () or not isListening or client_name == "":
                 print("You need to register or update your information first")
             else:
                 print("Starting subjects of interest publish")
@@ -326,10 +350,10 @@ if __name__ == "__main__":
                             break
                         break
                     else:
-                        print("Timed out waiting for response, please try again.")
+                        print("Timed out waiting for response, please try again.\n")
                         awaitingResponse = False
                 except NameError:
                     print("Client wasn't registered, cannot publish messages")
 
         else:
-            print("Invalid input. Please try again")
+            print("Invalid input. Please try again\n")
