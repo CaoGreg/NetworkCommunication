@@ -529,24 +529,25 @@ def is_valid_port(port):
     return True
 
 
-def read_user_file(users):
-    user_file = open("user_file.json", "a+")
+def read_user_file():
+    global user_list
+    user_file = open("user_file.json", "r")
     try:
-        users = json.load(user_file)
+        user_list = json.load(user_file)
     except json.decoder.JSONDecodeError:
-        print("")
+        pass
     user_file.close()
 
 
 def write_user_file(users):
     user_file = open("user_file.json", "w")
-    json.dump(users, user_file)
+    json.dump(users, user_file, indent=4)
     user_file.close()
 
 
 if __name__ == "__main__":
     # Retrieve the already registered users
-    read_user_file(user_list)
+    read_user_file()
     # Start the message thread
     t_message = threading.Thread(target=listen_for_messages, args=(t_message_stop,))
     # t_input = threading.Thread(target=update_server_ip, args=())
