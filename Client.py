@@ -57,7 +57,7 @@ def listen_for_messages(stop_event):
             # TODO: Check si ca marche
             if "SUBJECTS-UPDATED" in str(server_message[0]):
                 subject_info = str(server_message[0].decode()).split(' ')
-                subjects_of_interest = subject_info[3]
+                subjects_of_interest = subject_info[3:]
                 print("New subject of interests: " + subjects_of_interest)
                 awaitingResponse = False
             if "CHANGE-SERVER" in str(server_message[0]):
@@ -322,7 +322,7 @@ if __name__ == "__main__":
             else:
                 print("Starting subjects of interest publish")
                 print("These are you subjects of interest: " + str(subjects_of_interest))
-                subject = input("To which subject do you want to publish? (This is case sensitive)")
+                subject = input("To which subject do you want to publish? (This is case sensitive) ")
                 print("Please enter the text you want to publish")
                 text = input()
 

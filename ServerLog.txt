@@ -1,3 +1,19 @@
-
-Server 192.168.2.13 to Server 192.168.2.13: []
-Server 192.168.2.13 Resuming Service
+Server 192.168.2.11: Beginning of Execution
+Client to Server 192.168.2.11: REGISTER 1606813437 Alexis 192.168.2.11 61634
+Server 192.168.2.11: Starting Registration for client Alexis
+Server 192.168.2.11: 1606813437 Alexis, REGISTERED: 1606813437
+Client to Server 192.168.2.11: DE-REGISTER 1606813457 Alexis
+Server 192.168.2.11: Starting De-Registration for client Alexis
+Server 192.168.2.11: 1606813457 Alexis, DE-REGISTERED
+Client to Server 192.168.2.11: REGISTER 1606813474 Toto 192.168.2.11 61634
+Server 192.168.2.11: Starting Registration for client Toto
+Server 192.168.2.11: 1606813474 Toto, REGISTERED: 1606813474
+Client to Server 192.168.2.11: SUBJECTS 1606813510 Toto ['AI', 'Networking', 'toto']
+Server 192.168.2.11: Starting subjects update for client Toto
+Server 192.168.2.11: 1606813510 Toto, updated: ['AI', 'Networking', 'toto'] SUBJECTS-REJECTED
+Client to Server 192.168.2.11: SUBJECTS 1606813575 Toto ['AI', 'Networking']
+Server 192.168.2.11: Starting subjects update for client Toto
+Server 192.168.2.11: 1606813575 Toto, updated: ['AI', 'Networking'] SUBJECTS-UPDATED
+Client to Server 192.168.2.11: PUBLISH 1606813881 Toto AI toto
+Server 192.168.2.11: Starting publish for client Toto
+Server 192.168.2.11: 1606813881 Toto MESSAGE: AI, toto

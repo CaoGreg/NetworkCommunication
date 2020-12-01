@@ -116,7 +116,6 @@ def listen_for_messages(stop_event):
                     user_publish_thread.start()
 
                 if message_dict["request_type"] == "UPDATE-SERVER":
-                    # TODO start a thread
                     server_update_thread = threading.Thread(target=update_server, args=(message_dict, ))
                     thread_list.append(server_update_thread)
                     add_to_server_log("Server " + other_server_address + " to Server " + serverIP + ": "
@@ -152,6 +151,7 @@ def listen_for_messages(stop_event):
                         # Check if it is a memory update
                         if '[{' in message:
                             user_list = json.loads(str(message).split(',' + other_server_address)[0])
+                            write_user_file(user_list)
 
 
 def user_registration(reg_message):
@@ -189,6 +189,9 @@ def user_registration(reg_message):
                     "socket": reg_message["socket"], "subjects": []}
         user_list.append(reg_user)
 
+        # Update user file
+        write_user_file(user_list)
+
         # Send response to the Client
         register_message_bytes = str.encode(registered_message)
         UDPServerSocket.sendto(register_message_bytes, client_address)
@@ -222,6 +225,8 @@ def user_de_registration(de_reg_message):
             print("Removing " + str(registered_user))
 
     if user_removed:
+        # Update user file
+        write_user_file(user_list)
         # Send Result to Other Server and update its memory
         server_msg = "DE-REGISTER" + " " + str(de_reg_message["name"]) + "," + serverIP + "," + str(serverPort)
         register_message_bytes = str.encode(server_msg)
@@ -255,6 +260,8 @@ def user_update(update_message):
         denial_reason = "User " + update_message["name"] + " does not exist"
 
     if user_exists and denial_reason == "":
+        # Update user file
+        write_user_file(user_list)
         # Send response to the Client
         message = "UPDATE-CONFIRMED: " + str(update_message["rq_number"]) + " " + update_message["name"] \
                   + " " + update_message["ip"] + " " + str(update_message["socket"])
@@ -310,6 +317,9 @@ def subjects_update(subjects_message, client_address):
 
     if user_exists and subject_exists and user_correct_ip:
         status = "SUBJECTS-UPDATED"
+
+        # Update user file
+        write_user_file(user_list)
 
         # Send response to the Client
         message = status + ": " + str(subjects_message["rq_number"]) + " " + subjects_message["name"] \
@@ -519,7 +529,24 @@ def is_valid_port(port):
     return True
 
 
+def read_user_file(users):
+    user_file = open("user_file.json", "a+")
+    try:
+        users = json.load(user_file)
+    except json.decoder.JSONDecodeError:
+        print("")
+    user_file.close()
+
+
+def write_user_file(users):
+    user_file = open("user_file.json", "w")
+    json.dump(users, user_file)
+    user_file.close()
+
+
 if __name__ == "__main__":
+    # Retrieve the already registered users
+    read_user_file(user_list)
     # Start the message thread
     t_message = threading.Thread(target=listen_for_messages, args=(t_message_stop,))
     # t_input = threading.Thread(target=update_server_ip, args=())
