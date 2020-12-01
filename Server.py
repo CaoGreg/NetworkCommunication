@@ -490,15 +490,15 @@ def send_update_server():
         break
     else:
         print("Timed out. No response from the other server.\n")
-        return
+        return True
 
     # TODO check if this whole function is good
-    print("hehexd")
     # Sending current to check that the other server is active
     update_server_message = {"request_type": "UPDATE-SERVER", "ip": serverIP, "socket": serverPort}
     update_server_message_json = json.dumps(update_server_message)
     update_server_message_bytes = str.encode(update_server_message_json)
     UDPClientSocket.sendto(update_server_message_bytes, other_server_address_port)
+    return False
 
 
 def add_to_server_log(log):
@@ -580,26 +580,38 @@ if __name__ == "__main__":
         isServerActive = True
     else:
         isServerActive = False
-        updateInput = input("Are you updating the server's IP/Port? 1 for Yes, anything else for No\n")
-        if updateInput == "1":
-            # TODO is this legit?
-            send_update_server()
+        updating = True
+        update_fail = False
+        while updating:
+            updateInput = input("Are you updating the server's IP/Port? 1 for Yes, anything else for No\n")
+            if updateInput == "1":
+                # TODO is this legit?
+                updating = send_update_server()
+                if updating:
+                    again = input("Do you want try again or shutdown the server? 1 to try again, anything else for Shutdown\n")
+                    if again != "1":
+                        updating = False
+                        shutdown_server = True
+                        update_fail = True
+            else:
+                updating = False
 
-    validInput = False
-    while not validInput:
-        activeTimeInput = input("How long should I serve before switching to other server?\n")
-        if activeTimeInput.isnumeric():
-            validInput = True
-        else:
-            print("Incorrect number\n")
+    if not shutdown_server:
+        validInput = False
+        while not validInput:
+            activeTimeInput = input("How long should I serve before switching to other server?\n")
+            if activeTimeInput.isnumeric():
+                validInput = True
+            else:
+                print("Incorrect number\n")
 
-    validInput = False
-    while not validInput:
-        timeOutInput = input("How long should I wait before switching back in case of time out?\n")
-        if timeOutInput.isnumeric():
-            validInput = True
-        else:
-            print("Incorrect number\n")
+        validInput = False
+        while not validInput:
+            timeOutInput = input("How long should I wait before switching back in case of time out?\n")
+            if timeOutInput.isnumeric():
+                validInput = True
+            else:
+                print("Incorrect number\n")
 
     while not shutdown_server:
         if isServerActive:
@@ -607,8 +619,6 @@ if __name__ == "__main__":
             print("Server Listening")
             time.sleep(int(activeTimeInput))
             isServerActive = False
-            # TODO
-            # save users to user file
 
             # Join all the threads that were started during the serving time and clear the list
             for element in thread_list:
@@ -626,6 +636,7 @@ if __name__ == "__main__":
             # Send messages to all connected clients that the server is changing
             change_server(False)
         else:
+            print("Server Idle")
             # If Other Server takes to long to respond, timeout and start serving again
             timeout_count = 0
             while not isServerActive:
@@ -646,4 +657,6 @@ if __name__ == "__main__":
                     timeout_count += 1
 
     # Server was shutdown, closing socket
-    UDPServerSocket.close()
+    print("Shutdown server\n")
+    if not update_fail:
+        UDPServerSocket.close()
