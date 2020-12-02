@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 import datetime
+import os
 import socket
+import sys
 import threading
 import time
 import json
@@ -28,9 +30,9 @@ serverPort = UDPServerSocket.getsockname()[1]
 print("Starting server")
 print("My IP address is " + serverIP + " and my port is " + str(serverPort))
 
-# Clear log file
-f = open("ServerLog.txt", "w")
-f.write("Server " + serverIP + ": Beginning of Execution")
+# Append to log file
+f = open("ServerLog.txt", "a")
+f.write("Server " + serverIP + ": Beginning of Execution\n")
 f.close()
 
 
@@ -49,11 +51,11 @@ def listen_for_messages(stop_event):
         for read_socket in read:
             bytes_address_pair = UDPServerSocket.recvfrom(bufferSize)
             message = (bytes_address_pair[0].decode())
-            print(message)
+            # print(message)
 
             # Only answer if the server is serving
             if isServerActive:
-                print(message)
+                # print(message)
                 message_dict = json.loads(message)
 
                 if message_dict["request_type"] == "REGISTER":
@@ -74,7 +76,7 @@ def listen_for_messages(stop_event):
                         message_dict["rq_number"]) + " " + message_dict["name"]
                     add_to_server_log(client_msg)
 
-                    de_register_thread = threading.Thread(target=user_de_registration, args=(message_dict,))
+                    de_register_thread = threading.Thread(target=user_de_registration, args=(message_dict, bytes_address_pair[1]))
                     thread_list.append(de_register_thread)
                     add_to_server_log("Server " + serverIP + ": Starting De-Registration for client " + message_dict["name"])
                     de_register_thread.start()
@@ -211,15 +213,15 @@ def user_registration(reg_message):
 
     new_reg_memory = str.encode(json.dumps(user_list) + "," + serverIP + "," + str(serverPort))
     UDPClientSocket.sendto(new_reg_memory, other_server_address_port)
-    print(reg_message)
-    print(new_reg_memory)
+    # print(reg_message)
+    # print(new_reg_memory)
 
 
-def user_de_registration(de_reg_message):
+def user_de_registration(de_reg_message, client_address):
     user_removed = False
 
     for registered_user in user_list:
-        if registered_user["name"] == de_reg_message["name"]:
+        if registered_user["name"] == de_reg_message["name"] and registered_user["ip"] == str(client_address[0]) and registered_user["socket"] == str(client_address[1]):
             user_removed = True
             user_list.remove(registered_user)
             print("Removing " + str(registered_user))
@@ -236,8 +238,8 @@ def user_de_registration(de_reg_message):
         UDPClientSocket.sendto(new_reg_memory, other_server_address_port)
         add_to_server_log("Server " + serverIP + ": " + str(de_reg_message["rq_number"]) + " "
                           + de_reg_message["name"] + ", " + "DE-REGISTERED")
-        print(de_reg_message)
-        print(new_reg_memory)
+        # print(de_reg_message)
+        # print(new_reg_memory)
 
 
 def user_update(update_message):
@@ -249,17 +251,24 @@ def user_update(update_message):
         if registered_user["ip"] == update_message["ip"] and registered_user["socket"] == update_message["socket"] and registered_user["name"] != update_message["name"]:
             denial_reason = "Requested ip/socket combination already exists"
             break
-        if registered_user["name"] == update_message["name"]:
-            user_exists = True
-            registered_user["ip"] = update_message["ip"]
-            registered_user["socket"] = update_message["socket"]
-            print("Updating " + registered_user["name"])
-            break
+    if denial_reason == "":
+        for registered_user in user_list:
+            if registered_user["name"] == update_message["name"]:
+                user_exists = True
+                old_client_address = (str(registered_user["ip"]), int(registered_user["socket"]))
+                registered_user["ip"] = update_message["ip"]
+                registered_user["socket"] = update_message["socket"]
+                print("Updating " + registered_user["name"])
+                break
 
     if denial_reason == "" and user_exists is False:
         denial_reason = "User " + update_message["name"] + " does not exist"
 
     if user_exists and denial_reason == "":
+        # Shutdown the old client
+        shutdown_client_message_bytes = str.encode("SHUTDOWN-CLIENT," + old_client_address[0] + "," + str(old_client_address[1]))
+        UDPClientSocket.sendto(shutdown_client_message_bytes, old_client_address)
+        add_to_server_log("Server " + serverIP + " SHUTDOWN-CLIENT:" + str(old_client_address))
         # Update user file
         write_user_file(user_list)
         # Send response to the Client
@@ -280,8 +289,8 @@ def user_update(update_message):
 
         new_reg_memory = str.encode(json.dumps(user_list) + "," + serverIP + "," + str(serverPort))
         UDPClientSocket.sendto(new_reg_memory, other_server_address_port)
-        print(message)
-        print(new_reg_memory)
+        # print(message)
+        # new_reg_memory)
     else:
         # Send response to the Client
         denial_message = "UPDATE-DENIED: " + str(update_message["rq_number"]) + ", " + denial_reason
@@ -340,8 +349,8 @@ def subjects_update(subjects_message, client_address):
         add_to_server_log("Server " + serverIP + ": " + str(subjects_message["rq_number"]) + " "
                           + subjects_message["name"] + ", updated: " + str(subjects_message["subjects"]) + " " + status)
 
-        print(subjects_message)
-        print(new_reg_memory)
+        # print(subjects_message)
+        # print(new_reg_memory)
     else:
         status = "SUBJECTS-REJECTED"
 
@@ -354,8 +363,8 @@ def subjects_update(subjects_message, client_address):
         # log the message
         add_to_server_log("Server " + serverIP + ": " + str(subjects_message["rq_number"]) + " "
                           + subjects_message["name"] + ", updated: " + str(subjects_message["subjects"]) + " " + status)
-        print(subjects_message)
-        print(message)
+        # print(subjects_message)
+        # print(message)
 
 
 def user_publish(publish_message, client_address):
@@ -397,7 +406,7 @@ def user_publish(publish_message, client_address):
         add_to_server_log("Server " + serverIP + ": " + str(publish_message["rq_number"]) + " "
                           + publish_message["name"] + " MESSAGE: " + publish_message["subject"]
                           + ", " + publish_message["text"])
-        print(message)
+        # print(message)
     else:
         status = "PUBLISH-DENIED"
         denial_reason = ""
@@ -450,7 +459,6 @@ def update_server(update_server_message):
     global other_server_address
     global other_server_port
 
-    # TODO send to other server to shutdown
     shutdown_server_message_bytes = str.encode("SHUTDOWN-SERVER," + serverIP + "," + str(serverPort))
     UDPClientSocket.sendto(shutdown_server_message_bytes, other_server_address_port)
 
@@ -468,7 +476,7 @@ def send_update_server():
     current_message_bytes = str.encode(current_message_json)
     UDPClientSocket.sendto(current_message_bytes, other_server_address_port)
 
-    count = 5  # TODO hardcoded here
+    count = 5
     while count > 0:
         read, write, errors = select.select([UDPClientSocket], [], [], 1)
         for read_socket in read:
@@ -479,7 +487,7 @@ def send_update_server():
                 else:
                     print("Did no receive confirmation, aborting UPDATE-SERVER")
                     continue
-                print(msg)
+                # print(msg)
             except socket.error as err:
                 print("Caught an exception with the socket: " + str(err))
                 continue
@@ -492,7 +500,6 @@ def send_update_server():
         print("Timed out. No response from the other server.\n")
         return True
 
-    # TODO check if this whole function is good
     # Sending current to check that the other server is active
     update_server_message = {"request_type": "UPDATE-SERVER", "ip": serverIP, "socket": serverPort}
     update_server_message_json = json.dumps(update_server_message)
@@ -503,7 +510,7 @@ def send_update_server():
 
 def add_to_server_log(log):
     file = open("ServerLog.txt", "a")
-    file.write("\n" + log)
+    file.write(log + "\n")
     file.close()
 
 
@@ -531,16 +538,17 @@ def is_valid_port(port):
 
 def read_user_file():
     global user_list
-    user_file = open("user_file.json", "r")
-    try:
-        user_list = json.load(user_file)
-    except json.decoder.JSONDecodeError:
-        pass
-    user_file.close()
+    if os.path.exists("user_file.json"):
+        user_file = open("user_file.json", "r")
+        try:
+            user_list = json.load(user_file)
+        except json.decoder.JSONDecodeError:
+            pass
+        user_file.close()
 
 
 def write_user_file(users):
-    user_file = open("user_file.json", "w")
+    user_file = open("user_file.json", "w+")
     json.dump(users, user_file, indent=4)
     user_file.close()
 
@@ -582,18 +590,19 @@ if __name__ == "__main__":
     else:
         isServerActive = False
         updating = True
-        update_fail = False
         while updating:
             updateInput = input("Are you updating the server's IP/Port? 1 for Yes, anything else for No\n")
             if updateInput == "1":
-                # TODO is this legit?
                 updating = send_update_server()
                 if updating:
                     again = input("Do you want try again or shutdown the server? 1 to try again, anything else for Shutdown\n")
                     if again != "1":
                         updating = False
                         shutdown_server = True
-                        update_fail = True
+                        # Joining message thread
+                        t_message_stop.set()
+                        t_message.join()
+                        break
             else:
                 updating = False
 
@@ -659,5 +668,5 @@ if __name__ == "__main__":
 
     # Server was shutdown, closing socket
     print("Shutdown server\n")
-    if not update_fail:
-        UDPServerSocket.close()
+    UDPClientSocket.close()
+    UDPServerSocket.close()

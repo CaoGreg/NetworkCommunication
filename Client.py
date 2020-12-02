@@ -21,6 +21,7 @@ subjects_of_interest = []
 isListening = False
 count_time_out = 10  # Random number for initialization, will get overwritten later
 awaitingResponse = False
+shutdown = False
 
 # Create a UDP socket at client side
 UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
@@ -40,8 +41,10 @@ def listen_for_messages(stop_event):
     global serverBAddressPort
     global subjects_of_interest
     global awaitingResponse
+    global shutdown
     has_error = False
     print("Listening for messages")
+
 
     # Wait for messages
     while not stop_event.is_set():
@@ -54,12 +57,25 @@ def listen_for_messages(stop_event):
                 break
 
             print(str(server_message[0].decode()))
-            # TODO: Check si ca marche
             if "SUBJECTS-UPDATED" in str(server_message[0]):
                 subject_info = str(server_message[0].decode()).split(' ')
                 subjects_of_interest = subject_info[3:]
-                print("New subject of interests: " + subjects_of_interest)
+                print("New subject of interests: " + str(subjects_of_interest))
                 awaitingResponse = False
+            if "SHUTDOWN-CLIENT" in str(server_message[0]):
+                print("You have been disconnected because of an update on another client")
+                currentServerAddressPort = ()
+                client_name = ""
+                subjects_of_interest = []
+                shutdown = True
+                # Stop the listening thread
+                try:
+                    isListening = False
+                    t_message_event.set()
+                    t_message.join()
+                    t_message_event.clear()
+                except:
+                    pass
             if "CHANGE-SERVER" in str(server_message[0]):
                 server_info = str(server_message[0].decode()).split(',')
                 nextServerAddressPort = (server_info[1], int(server_info[2]))
@@ -125,9 +141,9 @@ if __name__ == "__main__":
     serverBAddressPort = get_address_and_port("second")
     count_time_out = int(input("How long should I wait for a response before timing out?\n"))
 
-    while True:
+    while True and not shutdown:
         # Get user input
-        print("What would you like to do today?")
+        print("What would you like to do today " + client_name + " ?")
         print("0: Register to the server\n1: De-register from server\n2: Update ip/socket"
               "\n3: Update subjects of interest\n4: Publish subjects of interest")
         user_action = input()
@@ -143,15 +159,14 @@ if __name__ == "__main__":
             UDPClientSocket.sendto(registerMessageBytes, serverAAddressPort)
             UDPClientSocket.sendto(registerMessageBytes, serverBAddressPort)
             count = count_time_out
-            while count > 0:
-                read, write, errors = select.select([UDPClientSocket], [], [], 1)
-                for read_socket in read:
-                    try:
-                        msg = UDPClientSocket.recvfrom(bufferSize)
-                        if "REGISTERED" in str(msg):
-                            client_name = name
-                        if not isListening:
+            if not isListening:
+                while count > 0:
+                    read, write, errors = select.select([UDPClientSocket], [], [], 1)
+                    for read_socket in read:
+                        try:
+                            msg = UDPClientSocket.recvfrom(bufferSize)
                             if "REGISTERED" in str(msg):
+                                client_name = name
                                 currentServerAddressPort = msg[1]
                                 # Start listening to the server
                                 isListening = True
@@ -159,16 +174,17 @@ if __name__ == "__main__":
                                 t_message = threading.Thread(target=listen_for_messages, args=(t_message_event,))
                                 t_message.start()
                             print(msg)
-                        break
-                    except socket.error as err:
-                        print("Caught an exception with the socket: " + str(err))
+                            break
+                        except socket.error as err:
+                            print("Caught an exception with the socket: " + str(err))
+                            continue
+                    else:
+                        print(count)
+                        count = count - 1
                         continue
+                    break
                 else:
-                    count = count - 1
-                    continue
-                break
-            else:
-                print("Timed out. No response from the server. Please try again.\n")
+                    print("Timed out. No response from the server. Please try again.\n")
 
         # De-register
         elif user_action == '1':
@@ -204,7 +220,7 @@ if __name__ == "__main__":
             if currentServerAddressPort == ():
                 # Send current request to both servers
                 current_message = {"request_type": "CURRENT", "rq_number": int(datetime.datetime.utcnow().timestamp()),
-                                   "ip": ip_address, "socket": socket_number}
+                                   "ip": ip_address, "socket": str(socket_number)}
                 current_message_json = json.dumps(current_message)
                 current_message_bytes = str.encode(current_message_json)
 
@@ -226,6 +242,7 @@ if __name__ == "__main__":
                             continue
                         break
                     else:
+                        print(count)
                         count = count - 1
                         continue
                     break
@@ -237,7 +254,7 @@ if __name__ == "__main__":
             # Send update request to current server
             name = input("What is your name?\n")
             update_message = {"request_type": "UPDATE", "rq_number": int(datetime.datetime.utcnow().timestamp()),
-                              "name": name, "ip": ip_address, "socket": socket_number}
+                              "name": name, "ip": ip_address, "socket": str(socket_number)}
             update_message_json = json.dumps(update_message)
             update_message_bytes = str.encode(update_message_json)
 
@@ -249,6 +266,8 @@ if __name__ == "__main__":
                 for read_socket in read:
                     try:
                         msg = UDPClientSocket.recvfrom(bufferSize)
+                        if "UPDATE-DENIED" in str(msg):
+                            print(str(msg))
                         if "UPDATE-CONFIRMED" in str(msg):
                             client_name = name
                         if not isListening:
@@ -357,3 +376,6 @@ if __name__ == "__main__":
 
         else:
             print("Invalid input. Please try again\n")
+
+    else:
+        print("Shutting down the client")
